@@ -15,7 +15,9 @@ import { randomUUID } from "node:crypto";
  * heç bir halda birbaşa URL ilə oxuna bilmir; yeganə giriş yolu /api/download-dır.
  */
 
-const STORAGE_ROOT = path.resolve(process.env.STORAGE_ROOT ?? "./storage");
+// turbopackIgnore: bu yollar runtime-da həll olunur; olmasa Turbopack bütün
+// layihəni trace edib serverin çıxışına daxil edir.
+const STORAGE_ROOT = path.resolve(/* turbopackIgnore: true */ process.env.STORAGE_ROOT ?? "./storage");
 
 function resolveKey(key: string): string {
   const full = path.resolve(STORAGE_ROOT, key);
@@ -69,7 +71,7 @@ export async function deleteObject(key: string): Promise<void> {
  * Açıq fayllar (preview .glb, render şəkilləri) `public/uploads` altında
  * saxlanılır və birbaşa URL ilə verilir — bunlar satılan məhsul deyil.
  */
-const PUBLIC_ROOT = path.resolve("./public/uploads");
+const PUBLIC_ROOT = path.resolve(/* turbopackIgnore: true */ "./public/uploads");
 
 export function publicUrl(key: string): string {
   return `/uploads/${key}`;

@@ -1,16 +1,10 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
+// Next.js 16 flat config — FlatCompat lazım deyil.
+import coreWebVitals from "eslint-config-next/core-web-vitals";
+import typescriptConfig from "eslint-config-next/typescript";
 
 const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  ...coreWebVitals,
+  ...typescriptConfig,
   {
     ignores: [
       "node_modules/**",
@@ -18,7 +12,13 @@ const eslintConfig = [
       "out/**",
       "build/**",
       "next-env.d.ts",
+      "src/generated/**", // Prisma-nın generasiya etdiyi kod
     ],
+  },
+  {
+    // Tip elanlarında namespace istifadəsi qaçılmazdır (JSX augmentation).
+    files: ["**/*.d.ts"],
+    rules: { "@typescript-eslint/no-namespace": "off" },
   },
 ];
 
