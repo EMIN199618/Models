@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx prisma/seed.ts",
-    "e2e": "tsx scripts/e2e-check.ts"
+    "e2e": "tsx scripts/e2e-check.ts",
+    "setup": "node scripts/setup.mjs",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:reset": "prisma migrate reset --force && npm run seed"
   },
   "dependencies": {
     "@google/model-viewer": "^4.3.1",
@@ -38,5 +42,8 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.12",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=20.9"
   }
 }

@@ -21,30 +21,42 @@ qorunan endirmə** zənciri baş-başa işləyir.
 
 ## Quraşdırma
 
+**Lazımdır:** [Node.js 20+](https://nodejs.org) və [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+Windows, macOS və Linux-da eyni işləyir.
+
 ```bash
-# 1. Asılılıqlar
+git clone https://github.com/EMIN199618/Models.git
+cd Models
+git checkout claude/3d-model-sales-site-ehmvnh
+
 npm install
-
-# 2. PostgreSQL bazası
-sudo service postgresql start
-sudo -u postgres psql -c "CREATE USER marketplace WITH PASSWORD 'marketplace' CREATEDB;"
-sudo -u postgres psql -c "CREATE DATABASE marketplace OWNER marketplace;"
-
-# 3. .env faylı
-cp .env.example .env      # sonra DOWNLOAD_SECRET dəyərini dəyişin
-
-# 4. Miqrasiya və Prisma client
-npx prisma migrate dev
-npx prisma generate
-
-# 5. Nümunə məlumat (8 model, 4 istifadəçi, şəkillər və .glb fayllar)
-npm run seed
-
-# 6. İşə sal
+npm run setup      # hər şeyi özü qurur
 npm run dev
 ```
 
 Sayt: http://localhost:3000
+
+`npm run setup` avtomatik olaraq: `.env` faylını yaradır və təsadüfi
+`DOWNLOAD_SECRET` generasiya edir → PostgreSQL konteynerini qaldırır →
+bazanın hazır olmasını gözləyir → miqrasiyaları tətbiq edir → Prisma client
+generasiya edir → nümunə məlumatı yükləyir.
+
+### Docker istifadə etmək istəmirsinizsə
+
+PostgreSQL-i özünüz qurun, `.env.example`-ı `.env` kimi kopyalayıb
+`DATABASE_URL`-i öz bazanıza yönəldin, sonra yenə `npm run setup` işlədin —
+skript Docker olmadığını görüb mövcud bazadan istifadə edəcək.
+
+### Faydalı əmrlər
+
+| Əmr | Nə edir |
+|---|---|
+| `npm run dev` | Saytı işə salır |
+| `npm run db:up` / `db:down` | Bazanı qaldırır / dayandırır |
+| `npm run db:reset` | Bazanı sıfırlayıb nümunə məlumatı yenidən yükləyir |
+| `npm run seed` | Yalnız nümunə məlumatı yenidən yükləyir |
+| `npm run e2e` | Alış/endirmə testlərini işlədir (sayt açıq olmalıdır) |
+| `npm run build` | İstehsal üçün build |
 
 ### Test hesabları
 
@@ -61,8 +73,8 @@ Sayt: http://localhost:3000
 Alış və endirmə axınının təhlükəsizliyini yoxlayır (13 test):
 
 ```bash
-npm run dev          # ayrı terminalda
-npx tsx scripts/e2e-check.ts
+npm run dev      # ayrı terminalda açıq qalsın
+npm run e2e
 ```
 
 Yoxlanan hallar: sessiyasız endirmə, alınmamış model, balansın düzgün

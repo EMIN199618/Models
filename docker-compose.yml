@@ -1,0 +1,31 @@
+# Yalnız verilənlər bazası üçün. Tətbiqin özü `npm run dev` ilə işləyir.
+# Məqsəd: PostgreSQL-i əl ilə quraşdırmağa ehtiyac qalmasın.
+#
+#   docker compose up -d     bazanı işə salır
+#   docker compose down      dayandırır (məlumat qalır)
+#   docker compose down -v   məlumatı da silir
+
+# Qovluğun adından asılı olmasın deyə layihə adı açıq təyin olunub.
+name: arxvia
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: arxvia-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: marketplace
+      POSTGRES_PASSWORD: marketplace
+      POSTGRES_DB: marketplace
+    ports:
+      - "5432:5432"
+    volumes:
+      - arxvia-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marketplace -d marketplace"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  arxvia-pgdata:
