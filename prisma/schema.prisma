@@ -1,0 +1,328 @@
+// AI 3D Asset Marketplace — data modeli
+// Sənədləşmə: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enum-lar
+// ---------------------------------------------------------------------------
+
+enum Role {
+  USER // adi istifadəçi — model endirir
+  ARTIST // model yükləyə bilir
+  ADMIN // moderasiya və idarəetmə
+}
+
+enum ModelStatus {
+  DRAFT // artist hələ göndərməyib
+  PENDING // moderasiya növbəsində
+  PUBLISHED // kataloqda görünür
+  REJECTED // rədd edilib
+  ARCHIVED // gizlədilib (məs. müəllif hüququ şikayəti)
+}
+
+enum AssetKind {
+  SOURCE // satılan əsl fayl (.max/.fbx/.zip) — QORUNUR
+  PREVIEW_GLB // brauzerdə 3D önizləmə üçün sadələşdirilmiş .glb — açıqdır
+  IMAGE // render şəkilləri / thumbnail — açıqdır
+}
+
+enum Renderer {
+  CORONA
+  VRAY
+  BOTH
+  OTHER
+}
+
+enum CreditReason {
+  SIGNUP_BONUS // qeydiyyat hədiyyəsi
+  ADMIN_GRANT // admin əl ilə verib
+  SUBSCRIPTION // aylıq abunə krediti
+  REFERRAL // dəvət bonusu
+  DOWNLOAD_SPEND // model endirilməsinə xərclənib (mənfi)
+  REFUND // geri qaytarılıb
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  EXPIRED
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+// ---------------------------------------------------------------------------
+// İstifadəçi və sessiya
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  passwordHash String
+  name         String
+  role         Role    @default(USER)
+  // Artist profili üçün — /artist/[slug]
+  slug         String? @unique
+  bio          String?
+  avatarUrl    String?
+  country      String?
+
+  // Credit balansı. Həqiqi mənbə CreditTransaction jurnalıdır;
+  // bu sahə sürət üçün saxlanılır və həmişə tranzaksiya daxilində yenilənir.
+  creditBalance Int @default(0)
+
+  // Dəvət sistemi
+  referralCode String  @unique @default(cuid())
+  referredById String?
+  referredBy   User?   @relation("Referrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals    User[]  @relation("Referrals")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions      Session[]
+  models        Model[] // artist kimi yüklədiyi modellər
+  entitlements  Entitlement[]
+  downloadLogs  DownloadLog[]
+  transactions  CreditTransaction[]
+  subscriptions Subscription[]
+  favorites     Favorite[]
+  reports       Report[]            @relation("Reporter")
+  reviewedModel Model[]             @relation("Reviewer")
+
+  @@index([role])
+}
+
+/// Opaque token ilə sessiya. JWT əvəzinə DB sessiyası seçilib ki,
+/// çıxış (logout) və admin tərəfindən ləğv etmə real işləsin.
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique // xam token yalnız cookie-də olur
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ip        String?
+  userAgent String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ---------------------------------------------------------------------------
+// Kataloq taksonomiyası
+// ---------------------------------------------------------------------------
+
+model Category {
+  id       String     @id @default(cuid())
+  slug     String     @unique
+  name     String
+  parentId String?
+  parent   Category?  @relation("SubCategories", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("SubCategories")
+  models   Model[]
+
+  @@index([parentId])
+}
+
+model Tag {
+  id     String     @id @default(cuid())
+  slug   String     @unique
+  name   String
+  models ModelTag[]
+}
+
+model ModelTag {
+  modelId String
+  tagId   String
+  model   Model  @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  tag     Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([modelId, tagId])
+  @@index([tagId])
+}
+
+// ---------------------------------------------------------------------------
+// Məhsul: 3D model
+// ---------------------------------------------------------------------------
+
+model Model {
+  id          String      @id @default(cuid())
+  slug        String      @unique
+  title       String
+  description String      @default("")
+  status      ModelStatus @default(DRAFT)
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  /// true = platformanın öz modeli, false = artist modeli.
+  /// Müəllif adı yalnız artist modellərində göstərilir.
+  isOfficial Boolean @default(false)
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  /// Endirmək üçün tələb olunan Credit sayı. 0 = pulsuz.
+  creditCost Int @default(1)
+
+  // Texniki metadata — arxviz auditoriyası üçün filtrlərin əsasıdır
+  renderer      Renderer @default(OTHER)
+  formats       String[] @default([]) // ["max", "fbx", "obj"]
+  maxVersion    String? // "2021"
+  polyCount     Int?
+  vertexCount   Int?
+  hasTextures   Boolean  @default(false)
+  isPbr         Boolean  @default(false)
+  fileSizeBytes BigInt   @default(0)
+
+  // Statistika
+  viewCount     Int @default(0)
+  downloadCount Int @default(0)
+
+  // Moderasiya
+  publishedAt     DateTime?
+  reviewedAt      DateTime?
+  reviewedById    String?
+  reviewedBy      User?     @relation("Reviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  rejectionReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assets       Asset[]
+  tags         ModelTag[]
+  entitlements Entitlement[]
+  downloadLogs DownloadLog[]
+  transactions CreditTransaction[]
+  favorites    Favorite[]
+  reports      Report[]
+
+  @@index([status, publishedAt])
+  @@index([categoryId, status])
+  @@index([authorId])
+  @@index([renderer])
+}
+
+/// Modelə aid fayllar. SOURCE faylı heç vaxt birbaşa URL ilə verilmir —
+/// yalnız /api/download imzalı token ilə oxuya bilir.
+model Asset {
+  id           String    @id @default(cuid())
+  modelId      String
+  model        Model     @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  kind         AssetKind
+  storageKey   String // storage daxilindəki yol, məs. "models/<id>/source.zip"
+  originalName String
+  mimeType     String    @default("application/octet-stream")
+  sizeBytes    BigInt    @default(0)
+  sortOrder    Int       @default(0)
+  createdAt    DateTime  @default(now())
+
+  @@index([modelId, kind])
+}
+
+// ---------------------------------------------------------------------------
+// Alış / endirmə
+// ---------------------------------------------------------------------------
+
+/// İstifadəçinin modeli endirmə HÜQUQU. Credit bir dəfə tutulur;
+/// sonrakı endirmələr pulsuzdur (satın alınmış məhsul yenidən endirilə bilər).
+model Entitlement {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  modelId      String
+  model        Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  creditsSpent Int
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, modelId])
+  @@index([modelId])
+}
+
+/// Hər faktiki fayl endirilməsinin jurnalı — sui-istifadənin aşkarlanması üçün.
+model DownloadLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  modelId   String
+  model     Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([modelId, createdAt])
+}
+
+/// Credit hərəkətlərinin dəyişilməz jurnalı (ledger).
+/// User.creditBalance bunun cəmi ilə üst-üstə düşməlidir.
+model CreditTransaction {
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount       Int // müsbət = əlavə, mənfi = xərc
+  reason       CreditReason
+  balanceAfter Int
+  modelId      String?
+  model        Model?       @relation(fields: [modelId], references: [id], onDelete: SetNull)
+  note         String?
+  createdAt    DateTime     @default(now())
+
+  @@index([userId, createdAt])
+}
+
+/// Abunə. MVP-də ödəniş şlüzü yoxdur — status admin tərəfindən idarə olunur.
+/// Ödəniş provayderi sonradan yalnız bura qoşulacaq.
+model Subscription {
+  id                 String             @id @default(cuid())
+  userId             String
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan               String // "DESIGNER_PRO"
+  status             SubscriptionStatus @default(ACTIVE)
+  monthlyCredits     Int
+  priceMinor         Int // qəpiklə, məs. 1500 = 15.00 AZN
+  currency           String             @default("AZN")
+  currentPeriodStart DateTime           @default(now())
+  currentPeriodEnd   DateTime
+  createdAt          DateTime           @default(now())
+
+  @@index([userId, status])
+}
+
+model Favorite {
+  userId    String
+  modelId   String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  model     Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, modelId])
+  @@index([modelId])
+}
+
+/// Müəllif hüququ / keyfiyyət şikayəti.
+model Report {
+  id         String       @id @default(cuid())
+  modelId    String
+  model      Model        @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  reporterId String?
+  reporter   User?        @relation("Reporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  reason     String // "COPYRIGHT" | "QUALITY" | "SPAM" | ...
+  details    String       @default("")
+  status     ReportStatus @default(OPEN)
+  createdAt  DateTime     @default(now())
+
+  @@index([status, createdAt])
+}
