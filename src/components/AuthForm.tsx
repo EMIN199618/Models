@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
 import type { ActionState } from "@/actions/auth";
+import { MODEL_CREDIT_COST, REFERRAL_BONUS_CREDITS } from "@/lib/pricing";
 
 function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
@@ -17,9 +18,12 @@ function SubmitButton({ label }: { label: string }) {
 export function AuthForm({
   mode,
   action,
+  defaultReferralCode = "",
 }: {
   mode: "login" | "register";
   action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
+  /** Linkdəki ?ref=KOD dəyəri — dost linki ilə gələndə avtomatik doldurulur */
+  defaultReferralCode?: string;
 }) {
   const [state, formAction] = useActionState(action, undefined);
   const isRegister = mode === "register";
@@ -66,6 +70,26 @@ export function AuthForm({
           <p className="mt-1 text-xs text-muted">Ən azı 8 simvol.</p>
         )}
       </div>
+
+      {isRegister && (
+        <div>
+          <label className="label" htmlFor="referralCode">
+            Dəvət kodu <span className="font-normal">(varsa)</span>
+          </label>
+          <input
+            id="referralCode"
+            name="referralCode"
+            className="input"
+            placeholder="Dostunuzun kodu"
+            defaultValue={defaultReferralCode}
+            autoComplete="off"
+          />
+          <p className="mt-1 text-xs text-muted">
+            Kod yazsanız {REFERRAL_BONUS_CREDITS} Credit hədiyyə qazanırsınız —
+            bu, {REFERRAL_BONUS_CREDITS / MODEL_CREDIT_COST} pulsuz model deməkdir.
+          </p>
+        </div>
+      )}
 
       {isRegister && (
         <label className="flex items-start gap-2.5 rounded-lg border border-border bg-surface-2 p-3">

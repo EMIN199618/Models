@@ -4,6 +4,13 @@ import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  ARTIST_REVENUE_SHARE,
+  creditsToMinor,
+  formatCredits,
+  formatMinor,
+  MODEL_CREDIT_COST,
+} from "@/lib/pricing";
 
 export const metadata = { title: "Studiya" };
 
@@ -25,6 +32,12 @@ export default async function StudioPage({
   if (user.role !== "ARTIST" && user.role !== "ADMIN") redirect("/models");
 
   const uploaded = (await searchParams).uploaded === "1";
+
+  const earningsAgg = await prisma.artistEarning.aggregate({
+    where: { artistId: user.id },
+    _sum: { creditsNet: true, creditsGross: true },
+    _count: { _all: true },
+  });
 
   const models = await prisma.model.findMany({
     where: { authorId: user.id },
@@ -50,7 +63,10 @@ export default async function StudioPage({
 
   const published = models.filter((m) => m.status === "PUBLISHED");
   const totalDownloads = published.reduce((s, m) => s + m.downloadCount, 0);
-  const earnedCredits = published.reduce((s, m) => s + m.downloadCount * m.creditCost, 0);
+
+  // Qazanc real satış jurnalından gəlir (60/40 bölgüsü tətbiq olunmuş)
+  const earnedCredits = earningsAgg._sum.creditsNet ?? 0;
+  const salesCount = earningsAgg._count._all;
 
   return (
     <div className="space-y-6">
@@ -74,7 +90,28 @@ export default async function StudioPage({
         <Stat label="Modellər" value={models.length} />
         <Stat label="Dərc olunub" value={published.length} />
         <Stat label="Endirilmə" value={totalDownloads} />
-        <Stat label="Qazanılan Credit" value={earnedCredits} hint="brüt" />
+        <Stat label="Satış" value={salesCount} />
+      </div>
+
+      <div className="card p-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-3">
+          <div>
+            <p className="text-xs text-muted">
+              Qazancınız ({Math.round(ARTIST_REVENUE_SHARE * 100)}% pay)
+            </p>
+            <p className="mt-1 text-3xl font-semibold text-success">
+              {formatCredits(earnedCredits)} Credit
+            </p>
+            <p className="mt-1 text-sm text-muted">
+              ≈ {formatMinor(creditsToMinor(earnedCredits))}
+            </p>
+          </div>
+          <p className="max-w-sm text-xs text-muted">
+            Modeliniz hər dəfə endiriləndə {MODEL_CREDIT_COST} Credit-in{" "}
+            {Math.round(ARTIST_REVENUE_SHARE * 100)}%-i sizə yazılır. Ödəniş
+            qaydaları hazırlıq mərhələsindədir.
+          </p>
+        </div>
       </div>
 
       {models.length === 0 ? (
@@ -129,13 +166,10 @@ export default async function StudioPage({
   );
 }
 
-function Stat({ label, value, hint }: { label: string; value: number; hint?: string }) {
+function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="card p-4">
-      <p className="text-xs text-muted">
-        {label}
-        {hint && <span className="opacity-60"> ({hint})</span>}
-      </p>
+      <p className="text-xs text-muted">{label}</p>
       <p className="mt-1 text-2xl font-semibold">{value}</p>
     </div>
   );

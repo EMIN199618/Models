@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/lib/prisma";
+import { artistShareOf } from "@/lib/pricing";
 import type { CreditReason } from "@/generated/prisma/enums";
 
 export class CreditError extends Error {
@@ -76,7 +77,13 @@ export async function purchaseModel(params: {
 
     const model = await tx.model.findUnique({
       where: { id: modelId },
-      select: { id: true, status: true, creditCost: true, authorId: true },
+      select: {
+        id: true,
+        status: true,
+        creditCost: true,
+        authorId: true,
+        isOfficial: true,
+      },
     });
     if (!model) throw new CreditError("Model tapılmadı", "NOT_FOUND");
     if (model.status !== "PUBLISHED") {
@@ -117,6 +124,20 @@ export async function purchaseModel(params: {
       data: { userId, modelId, creditsSpent: cost },
       select: { id: true },
     });
+
+    // Artist payı (60/40). Platformanın öz modellərində və müəllifin öz
+    // modelini endirməsində qazanc yazısı yaradılmır.
+    if (cost > 0 && !model.isOfficial && model.authorId !== userId) {
+      await tx.artistEarning.create({
+        data: {
+          artistId: model.authorId,
+          modelId,
+          entitlementId: entitlement.id,
+          creditsGross: cost,
+          creditsNet: artistShareOf(cost),
+        },
+      });
+    }
 
     await tx.model.update({
       where: { id: modelId },

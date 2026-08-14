@@ -5,12 +5,15 @@ import { redirect } from "next/navigation";
 import {
   approveModelAction,
   archiveModelAction,
+  cancelOrderAdminAction,
   grantCreditsAction,
+  markOrderPaidAction,
   rejectModelAction,
   resolveReportAction,
 } from "@/actions/admin";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { formatCredits, formatMinor } from "@/lib/pricing";
 
 export const metadata = { title: "Admin" };
 
@@ -19,7 +22,7 @@ export default async function AdminPage() {
   if (!user) redirect("/login");
   if (user.role !== "ADMIN") redirect("/models");
 
-  const [pending, reports, counts] = await Promise.all([
+  const [pending, orders, reports, counts] = await Promise.all([
     prisma.model.findMany({
       where: { status: "PENDING" },
       orderBy: { createdAt: "asc" },
@@ -37,6 +40,19 @@ export default async function AdminPage() {
           take: 1,
           select: { storageKey: true },
         },
+      },
+    }),
+    prisma.creditOrder.findMany({
+      where: { status: "PENDING" },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        packageId: true,
+        credits: true,
+        priceMinor: true,
+        currency: true,
+        createdAt: true,
+        user: { select: { name: true, email: true } },
       },
     }),
     prisma.report.findMany({
@@ -103,6 +119,55 @@ export default async function AdminPage() {
         <p className="mt-2 text-xs text-muted">
           Ödəniş şlüzü qoşulanadək abunə və Credit satışı bu yolla idarə olunur.
         </p>
+      </section>
+
+      {/* Credit paketi sifarişləri */}
+      <section>
+        <h2 className="mb-3 text-lg font-semibold">
+          Gözləyən Credit sifarişləri{" "}
+          <span className="text-sm font-normal text-muted">({orders.length})</span>
+        </h2>
+
+        {orders.length === 0 ? (
+          <p className="card p-8 text-center text-sm text-muted">
+            Gözləyən sifariş yoxdur.
+          </p>
+        ) : (
+          <div className="card divide-y divide-border">
+            {orders.map((o) => (
+              <div key={o.id} className="flex flex-wrap items-center gap-4 p-4">
+                <div className="min-w-56 flex-1">
+                  <p className="font-medium capitalize">
+                    {o.packageId} — {formatCredits(o.credits)} Credit
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted">
+                    {o.user.name} ({o.user.email}) ·{" "}
+                    {o.createdAt.toLocaleDateString("az-AZ")}
+                  </p>
+                </div>
+
+                <span className="font-semibold">
+                  {formatMinor(o.priceMinor, o.currency)}
+                </span>
+
+                <div className="flex gap-2">
+                  <form action={markOrderPaidAction}>
+                    <input type="hidden" name="orderId" value={o.id} />
+                    <button type="submit" className="btn-primary text-xs">
+                      Ödənildi — Credit ver
+                    </button>
+                  </form>
+                  <form action={cancelOrderAdminAction}>
+                    <input type="hidden" name="orderId" value={o.id} />
+                    <button type="submit" className="btn-ghost text-xs">
+                      Ləğv et
+                    </button>
+                  </form>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Moderasiya növbəsi */}

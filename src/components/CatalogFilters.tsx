@@ -38,7 +38,6 @@ export function CatalogFilters({
     params.get("category") ||
     params.get("renderer") ||
     params.get("format") ||
-    params.get("free") ||
     params.get("q");
 
   return (
@@ -87,16 +86,6 @@ export function CatalogFilters({
             </select>
           </div>
         )}
-
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            className="accent-[var(--accent)]"
-            checked={params.get("free") === "1"}
-            onChange={(e) => setParam("free", e.target.checked ? "1" : null)}
-          />
-          Yalnız pulsuzlar
-        </label>
 
         {hasFilters && (
           <button

@@ -7,9 +7,13 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { createSession, destroySession, hashPassword, verifyPassword } from "@/lib/auth";
 import { grantCredits } from "@/lib/credits";
+import { REFERRAL_BONUS_CREDITS, REFERRAL_BONUS_TRIGGER } from "@/lib/pricing";
 
-/** Yeni istifadəçiyə verilən başlanğıc Credit hədiyyəsi. */
-const SIGNUP_BONUS_CREDITS = 5;
+/**
+ * Yeni istifadəçiyə verilən başlanğıc Credit hədiyyəsi.
+ * 0 = hədiyyə yoxdur; Credit yalnız paket alınmaqla və ya dəvət kodu ilə gəlir.
+ */
+const SIGNUP_BONUS_CREDITS = 0;
 
 export type ActionState = { error?: string } | undefined;
 
@@ -18,6 +22,7 @@ const registerSchema = z.object({
   email: z.string().trim().toLowerCase().email("E-poçt düzgün deyil"),
   password: z.string().min(8, "Parol ən azı 8 simvol olmalıdır").max(200),
   isArtist: z.boolean().default(false),
+  referralCode: z.string().trim().max(60).optional(),
 });
 
 function slugify(value: string): string {
@@ -52,12 +57,13 @@ export async function registerAction(
     email: formData.get("email"),
     password: formData.get("password"),
     isArtist: formData.get("isArtist") === "on",
+    referralCode: String(formData.get("referralCode") ?? "").trim() || undefined,
   });
 
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Məlumatlar düzgün deyil" };
   }
-  const { name, email, password, isArtist } = parsed.data;
+  const { name, email, password, isArtist, referralCode } = parsed.data;
 
   const existing = await prisma.user.findUnique({
     where: { email },
@@ -75,6 +81,17 @@ export async function registerAction(
     }
   }
 
+  // Dəvət kodu — yazılıbsa, yoxlanır. Yanlış kod qeydiyyatı bloklamır,
+  // sadəcə bonus verilmir (istifadəçi səhv yazıbsa da hesab yaransın).
+  let referrer: { id: string } | null = null;
+  if (referralCode) {
+    referrer = await prisma.user.findUnique({
+      where: { referralCode },
+      select: { id: true },
+    });
+    if (!referrer) return { error: "Dəvət kodu tapılmadı — yoxlayıb yenidən yazın" };
+  }
+
   const user = await prisma.user.create({
     data: {
       name,
@@ -82,16 +99,30 @@ export async function registerAction(
       passwordHash: await hashPassword(password),
       role: isArtist ? "ARTIST" : "USER",
       slug,
+      referredById: referrer?.id ?? null,
     },
     select: { id: true },
   });
 
-  await grantCredits({
-    userId: user.id,
-    amount: SIGNUP_BONUS_CREDITS,
-    reason: "SIGNUP_BONUS",
-    note: "Qeydiyyat hədiyyəsi",
-  });
+  if (SIGNUP_BONUS_CREDITS > 0) {
+    await grantCredits({
+      userId: user.id,
+      amount: SIGNUP_BONUS_CREDITS,
+      reason: "SIGNUP_BONUS",
+      note: "Qeydiyyat hədiyyəsi",
+    });
+  }
+
+  // Dəvət bonusu. Trigger "FIRST_PURCHASE"-dirsə, burada verilmir —
+  // ilk paket ödənişi təsdiqlənəndə verilir (bax src/lib/pricing.ts).
+  if (referrer && REFERRAL_BONUS_TRIGGER === "REGISTRATION") {
+    await grantCredits({
+      userId: user.id,
+      amount: REFERRAL_BONUS_CREDITS,
+      reason: "REFERRAL",
+      note: "Dəvət kodu bonusu",
+    });
+  }
 
   await createSession(user.id, await requestMeta());
   redirect(isArtist ? "/studio" : "/models");

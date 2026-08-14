@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { requireRole } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { MODEL_CREDIT_COST } from "@/lib/pricing";
 import { makeStorageKey, putObject, putPublicObject } from "@/lib/storage";
 
 /**
@@ -29,7 +30,6 @@ const metaSchema = z.object({
   title: z.string().trim().min(3, "Başlıq ən azı 3 simvol olmalıdır").max(140),
   description: z.string().trim().max(5000).default(""),
   categorySlug: z.string().trim().optional(),
-  creditCost: z.coerce.number().int().min(0, "Qiymət mənfi ola bilməz").max(100),
   renderer: z.enum(["CORONA", "VRAY", "BOTH", "OTHER"]),
   formats: z.string().trim().default(""),
   maxVersion: z.string().trim().max(20).optional(),
@@ -69,7 +69,6 @@ export async function createModelAction(
     title: formData.get("title"),
     description: formData.get("description") ?? "",
     categorySlug: formData.get("categorySlug") || undefined,
-    creditCost: formData.get("creditCost") ?? 1,
     renderer: formData.get("renderer") ?? "OTHER",
     formats: formData.get("formats") ?? "",
     maxVersion: formData.get("maxVersion") || undefined,
@@ -162,7 +161,7 @@ export async function createModelAction(
       authorId: user.id,
       isOfficial: user.role === "ADMIN",
       categoryId: category?.id ?? null,
-      creditCost: meta.creditCost,
+      creditCost: MODEL_CREDIT_COST, // vahid qiymət siyasəti
       renderer: meta.renderer,
       formats,
       maxVersion: meta.maxVersion ?? null,

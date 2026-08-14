@@ -45,9 +45,16 @@ enum CreditReason {
   SIGNUP_BONUS // qeydiyyat hədiyyəsi
   ADMIN_GRANT // admin əl ilə verib
   SUBSCRIPTION // aylıq abunə krediti
+  CREDIT_PACKAGE // Credit paketi alınıb
   REFERRAL // dəvət bonusu
   DOWNLOAD_SPEND // model endirilməsinə xərclənib (mənfi)
   REFUND // geri qaytarılıb
+}
+
+enum CreditOrderStatus {
+  PENDING // ödəniş gözlənilir
+  PAID // ödənilib, Credit köçürülüb
+  CANCELED
 }
 
 enum SubscriptionStatus {
@@ -100,6 +107,8 @@ model User {
   favorites     Favorite[]
   reports       Report[]            @relation("Reporter")
   reviewedModel Model[]             @relation("Reviewer")
+  creditOrders  CreditOrder[]
+  earnings      ArtistEarning[]     @relation("ArtistEarnings")
 
   @@index([role])
 }
@@ -178,8 +187,9 @@ model Model {
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
-  /// Endirmək üçün tələb olunan Credit sayı. 0 = pulsuz.
-  creditCost Int @default(1)
+  /// Endirmək üçün tələb olunan Credit sayı.
+  /// Vahid qiymət siyasəti: bax src/lib/pricing.ts → MODEL_CREDIT_COST
+  creditCost Int @default(10)
 
   // Texniki metadata — arxviz auditoriyası üçün filtrlərin əsasıdır
   renderer      Renderer @default(OTHER)
@@ -212,6 +222,7 @@ model Model {
   transactions CreditTransaction[]
   favorites    Favorite[]
   reports      Report[]
+  earnings     ArtistEarning[]
 
   @@index([status, publishedAt])
   @@index([categoryId, status])
@@ -250,6 +261,8 @@ model Entitlement {
   model        Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
   creditsSpent Int
   createdAt    DateTime @default(now())
+
+  earning ArtistEarning?
 
   @@unique([userId, modelId])
   @@index([modelId])
@@ -303,6 +316,46 @@ model Subscription {
   createdAt          DateTime           @default(now())
 
   @@index([userId, status])
+}
+
+/// Credit paketi sifarişi.
+/// Ödəniş şlüzü qoşulanadək admin "ödənildi" işarələyir və Credit köçürülür.
+/// Şlüz qoşulanda yalnız bu modelin status keçidi avtomatlaşacaq.
+model CreditOrder {
+  id         String            @id @default(cuid())
+  userId     String
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  packageId  String // "start" | "plus" | "pro"
+  credits    Int
+  priceMinor Int // qəpiklə
+  currency   String            @default("AZN")
+  status     CreditOrderStatus @default(PENDING)
+  paidAt     DateTime?
+  note       String?
+  createdAt  DateTime          @default(now())
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+}
+
+/// Artistin bir alışdan qazancı (60/40 bölgüsü).
+/// Hər Entitlement üçün ən çoxu bir yazı olur — təkrar hesablanma mümkün deyil.
+model ArtistEarning {
+  id            String      @id @default(cuid())
+  artistId      String
+  artist        User        @relation("ArtistEarnings", fields: [artistId], references: [id], onDelete: Cascade)
+  modelId       String
+  model         Model       @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  entitlementId String      @unique
+  entitlement   Entitlement @relation(fields: [entitlementId], references: [id], onDelete: Cascade)
+
+  creditsGross Int // alıcının ödədiyi Credit (10)
+  creditsNet   Int // artistə düşən pay (6)
+
+  createdAt DateTime @default(now())
+
+  @@index([artistId, createdAt])
+  @@index([modelId])
 }
 
 model Favorite {

@@ -1,8 +1,12 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { cancelOrderAction } from "@/actions/orders";
+import { ReferralBox } from "@/components/ReferralBox";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { formatCredits, formatMinor, MODEL_CREDIT_COST } from "@/lib/pricing";
 
 export const metadata = { title: "Hesabım" };
 
@@ -10,16 +14,29 @@ const REASON_LABEL: Record<string, string> = {
   SIGNUP_BONUS: "Qeydiyyat hədiyyəsi",
   ADMIN_GRANT: "Admin tərəfindən əlavə",
   SUBSCRIPTION: "Abunə krediti",
+  CREDIT_PACKAGE: "Credit paketi",
   REFERRAL: "Dəvət bonusu",
   DOWNLOAD_SPEND: "Model əldə edilməsi",
   REFUND: "Geri qaytarma",
+};
+
+const ORDER_STATUS: Record<string, { text: string; className: string }> = {
+  PENDING: { text: "Ödəniş gözlənilir", className: "text-warning" },
+  PAID: { text: "Ödənilib", className: "text-success" },
+  CANCELED: { text: "Ləğv edilib", className: "text-muted" },
 };
 
 export default async function AccountPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const [transactions, entitlements, referralCode] = await Promise.all([
+  // Dəvət linkinin tam ünvanı serverdə hazırlanır (hydration uyğunsuzluğu olmasın).
+  const h = await headers();
+  const host = h.get("host") ?? "";
+  const proto = h.get("x-forwarded-proto") ?? "http";
+  const origin = host ? `${proto}://${host}` : "";
+
+  const [transactions, entitlements, profile, orders] = await Promise.all([
     prisma.creditTransaction.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
@@ -45,7 +62,21 @@ export default async function AccountPage() {
     }),
     prisma.user.findUnique({
       where: { id: user.id },
-      select: { referralCode: true },
+      select: { referralCode: true, _count: { select: { referrals: true } } },
+    }),
+    prisma.creditOrder.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+      select: {
+        id: true,
+        packageId: true,
+        credits: true,
+        priceMinor: true,
+        currency: true,
+        status: true,
+        createdAt: true,
+      },
     }),
   ]);
 
@@ -59,17 +90,67 @@ export default async function AccountPage() {
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="card p-5">
           <p className="text-xs text-muted">Credit balansı</p>
-          <p className="mt-1 text-3xl font-semibold text-accent">{user.creditBalance}</p>
+          <p className="mt-1 text-3xl font-semibold text-accent">
+            {formatCredits(user.creditBalance)}
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            ≈ {Math.floor(user.creditBalance / MODEL_CREDIT_COST)} model
+          </p>
         </div>
         <div className="card p-5">
           <p className="text-xs text-muted">Əldə edilmiş model</p>
           <p className="mt-1 text-3xl font-semibold">{entitlements.length}</p>
         </div>
-        <div className="card p-5">
-          <p className="text-xs text-muted">Dəvət kodunuz</p>
-          <p className="mt-1 truncate font-mono text-sm">{referralCode?.referralCode}</p>
+        <div className="card flex flex-col justify-between p-5">
+          <p className="text-xs text-muted">Credit lazımdır?</p>
+          <Link href="/pricing" className="btn-primary mt-2">
+            Paketlərə bax
+          </Link>
         </div>
       </div>
+
+      {profile && (
+        <ReferralBox
+          code={profile.referralCode}
+          invitedCount={profile._count.referrals}
+          origin={origin}
+        />
+      )}
+
+      <section>
+        <h2 className="mb-3 text-lg font-semibold">Credit sifarişlərim</h2>
+        {orders.length === 0 ? (
+          <p className="card p-8 text-center text-sm text-muted">
+            Hələ sifariş verməmisiniz.
+          </p>
+        ) : (
+          <div className="card divide-y divide-border text-sm">
+            {orders.map((o) => (
+              <div key={o.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                <div className="min-w-40 flex-1">
+                  <p className="font-medium capitalize">{o.packageId}</p>
+                  <p className="text-xs text-muted">
+                    {formatCredits(o.credits)} Credit ·{" "}
+                    {formatMinor(o.priceMinor, o.currency)} ·{" "}
+                    {o.createdAt.toLocaleDateString("az-AZ")}
+                  </p>
+                </div>
+                <span className={`text-xs ${ORDER_STATUS[o.status].className}`}>
+                  {ORDER_STATUS[o.status].text}
+                </span>
+                {o.status === "PENDING" && (
+                  <form action={cancelOrderAction}>
+                    <input type="hidden" name="orderId" value={o.id} />
+                    <button type="submit" className="btn-ghost text-xs">
+                      Ləğv et
+                    </button>
+                  </form>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section>
         <h2 className="mb-3 text-lg font-semibold">Modellərim</h2>

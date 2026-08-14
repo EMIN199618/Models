@@ -15,6 +15,9 @@ export function Header({ user }: { user: SessionUser | null }) {
           <Link href="/models" className="hover:text-foreground">
             Kataloq
           </Link>
+          <Link href="/pricing" className="hover:text-foreground">
+            Qiymətlər
+          </Link>
           {user ? (
             <Link href="/favorites" className="hover:text-foreground">
               Seçilmişlər

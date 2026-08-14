@@ -8,6 +8,7 @@ import { formatPolys } from "@/components/ModelCard";
 import { getCurrentUser } from "@/lib/auth";
 import { hasEntitlement } from "@/lib/credits";
 import { prisma } from "@/lib/prisma";
+import { formatCredits } from "@/lib/pricing";
 
 const RENDERER_LABEL: Record<string, string> = {
   CORONA: "Corona Renderer",
@@ -168,7 +169,7 @@ export default async function ModelDetailPage({
           {model.maxVersion && <Spec label="3ds Max" value={model.maxVersion} />}
           {model.polyCount != null && <Spec label="Poliqon" value={formatPolys(model.polyCount)} />}
           {model.vertexCount != null && (
-            <Spec label="Təpə (vertex)" value={model.vertexCount.toLocaleString("az")} />
+            <Spec label="Təpə (vertex)" value={formatCredits(model.vertexCount)} />
           )}
           <Spec label="Teksturalar" value={model.hasTextures ? "Var" : "Yoxdur"} />
           <Spec label="PBR" value={model.isPbr ? "Bəli" : "Xeyr"} />

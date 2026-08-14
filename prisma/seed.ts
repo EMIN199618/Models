@@ -11,6 +11,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client.js";
 import { makeBoxGlb, makeZip } from "./fixtures.js";
 import { TAXONOMY } from "./taxonomy.js";
+import { MODEL_CREDIT_COST, REFERRAL_BONUS_CREDITS } from "../src/lib/pricing.js";
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
@@ -25,7 +26,6 @@ type SeedModel = {
   title: string;
   description: string;
   category: string;
-  creditCost: number;
   renderer: "CORONA" | "VRAY" | "BOTH";
   formats: string[];
   maxVersion: string;
@@ -45,7 +45,6 @@ const MODELS: SeedModel[] = [
     description:
       "Üç modullu künc divan. Velur teksturaları 4K həllində, Corona materialları hazır vəziyyətdə qurulub.\nÖlçülər: 320 × 210 × 85 sm.",
     category: "divan",
-    creditCost: 3,
     renderer: "CORONA",
     formats: ["max", "fbx"],
     maxVersion: "2021",
@@ -63,7 +62,6 @@ const MODELS: SeedModel[] = [
     description:
       "Təbii palıd örtüklü yemək masası, 6 nəfərlik. V-Ray və Corona üçün ayrı material dəstləri daxildir.",
     category: "masa",
-    creditCost: 2,
     renderer: "BOTH",
     formats: ["max", "fbx", "obj"],
     maxVersion: "2020",
@@ -81,7 +79,6 @@ const MODELS: SeedModel[] = [
     description:
       "12 lampalı dekorativ asma çilçıraq. IES işıq profili faylı arxivə daxildir.",
     category: "cilciraq",
-    creditCost: 2,
     renderer: "CORONA",
     formats: ["max"],
     maxVersion: "2022",
@@ -98,7 +95,6 @@ const MODELS: SeedModel[] = [
     title: "Kitab rəfi — metal karkas",
     description: "Beş səviyyəli açıq kitab rəfi. Aşağı poliqonlu, səhnə üçün optimallaşdırılıb.",
     category: "ref",
-    creditCost: 1,
     renderer: "VRAY",
     formats: ["max", "fbx"],
     maxVersion: "2019",
@@ -115,7 +111,6 @@ const MODELS: SeedModel[] = [
     title: "Akrilik vanna — ayaqlı",
     description: "Sərbəst dayanan ayaqlı vanna. Su səthi üçün ayrıca material daxildir.",
     category: "vanna",
-    creditCost: 2,
     renderer: "CORONA",
     formats: ["max", "obj"],
     maxVersion: "2021",
@@ -130,16 +125,15 @@ const MODELS: SeedModel[] = [
   },
   {
     title: "Dekorativ vaza dəsti (3 ədəd)",
-    description: "Keramik vaza dəsti. Pulsuz nümunə — kolleksiyanın keyfiyyətini yoxlamaq üçün.",
+    description: "Üç ədədlik keramik vaza dəsti. Masaüstü və döşəmə variantları daxildir.",
     category: "vaza",
-    creditCost: 0,
     renderer: "BOTH",
     formats: ["max", "fbx", "obj"],
     maxVersion: "2020",
     polyCount: 12_400,
     vertexCount: 7_200,
     isPbr: true,
-    tags: ["vaza", "dekor", "keramika", "pulsuz"],
+    tags: ["vaza", "dekor", "keramika", "masaüstü"],
     box: { x: 0.6, y: 0.5, z: 0.35 },
     color: [0.85, 0.8, 0.72],
     official: true,
@@ -149,7 +143,6 @@ const MODELS: SeedModel[] = [
     title: "Ofis kreslosu — tor arxalıq",
     description: "Erqonomik ofis kreslosu, hərəkət edən hissələri ayrı obyektlərdir.",
     category: "ofis-kreslosu",
-    creditCost: 2,
     renderer: "VRAY",
     formats: ["max", "fbx"],
     maxVersion: "2022",
@@ -166,7 +159,6 @@ const MODELS: SeedModel[] = [
     title: "Divar panelləri — reyka (parametrik)",
     description: "Şaquli taxta reyka divar paneli. Uzunluğu asanlıqla dəyişdirilə bilər.",
     category: "divar-paneli",
-    creditCost: 1,
     renderer: "CORONA",
     formats: ["max"],
     maxVersion: "2021",
@@ -241,7 +233,6 @@ function generateFillerModels(): SeedModel[] {
           `${material} əsasındadır və render mühərriki üçün hazır qurulub.\n` +
           `Səhnəyə birbaşa import edilə bilər.`,
         category: child.slug,
-        creditCost: counter % 7 === 0 ? 0 : 1 + (counter % 3),
         renderer: pick(RENDERERS),
         formats: pick(FORMAT_SETS),
         maxVersion: pick(VERSIONS),
@@ -424,9 +415,9 @@ async function main() {
 
   // Başlanğıc Credit-lər (ledger ilə birlikdə)
   for (const [user, amount, reason] of [
-    [buyer, 25, "ADMIN_GRANT"],
-    [artists[0], 10, "SIGNUP_BONUS"],
-    [artists[1], 10, "SIGNUP_BONUS"],
+    [buyer, 150, "CREDIT_PACKAGE"],
+    [artists[0], REFERRAL_BONUS_CREDITS, "REFERRAL"],
+    [artists[1], REFERRAL_BONUS_CREDITS, "REFERRAL"],
   ] as const) {
     await prisma.user.update({
       where: { id: user.id },
@@ -479,7 +470,7 @@ async function main() {
         authorId: author.id,
         isOfficial: m.official,
         categoryId: category?.id ?? null,
-        creditCost: m.creditCost,
+        creditCost: MODEL_CREDIT_COST,
         renderer: m.renderer,
         formats: m.formats,
         maxVersion: m.maxVersion,
@@ -565,7 +556,6 @@ async function main() {
       description: "Mərmər səthli jurnal masası, qara metal ayaqlar.",
       status: "PENDING",
       authorId: artists[1].id,
-      creditCost: 2,
       renderer: "CORONA",
       formats: ["max", "fbx"],
       maxVersion: "2021",
@@ -603,7 +593,7 @@ async function main() {
   console.log("\nSeed tamamlandı.");
   console.log("  admin@arxvia.az / parol1234        (ADMIN)");
   console.log("  artist1@arxvia.az / parol1234      (ARTIST)");
-  console.log("  dizayner@example.com / parol1234   (USER, 25 Credit)");
+  console.log("  dizayner@example.com / parol1234   (USER, 150 Credit)");
 }
 
 main()

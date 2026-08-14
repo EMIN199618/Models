@@ -102,6 +102,64 @@ export async function grantCreditsAction(formData: FormData): Promise<void> {
   revalidatePath("/admin");
 }
 
+/**
+ * Credit paketi sifarişini "ödənildi" işarələyir və Credit-i köçürür.
+ *
+ * Ödəniş şlüzü qoşulanda məhz bu funksiya şlüzün callback-indən çağırılacaq —
+ * qalan məntiq dəyişməyəcək.
+ */
+export async function markOrderPaidAction(formData: FormData): Promise<void> {
+  await requireRole("ADMIN");
+  const orderId = String(formData.get("orderId") ?? "");
+  if (!orderId) return;
+
+  await prisma.$transaction(async (tx) => {
+    // Yalnız PENDING → PAID keçidi. Təkrar təsdiq Credit-i ikiqat verməsin.
+    const updated = await tx.creditOrder.updateMany({
+      where: { id: orderId, status: "PENDING" },
+      data: { status: "PAID", paidAt: new Date() },
+    });
+    if (updated.count === 0) return;
+
+    const order = await tx.creditOrder.findUniqueOrThrow({
+      where: { id: orderId },
+      select: { userId: true, credits: true, packageId: true },
+    });
+
+    const user = await tx.user.update({
+      where: { id: order.userId },
+      data: { creditBalance: { increment: order.credits } },
+      select: { creditBalance: true },
+    });
+
+    await tx.creditTransaction.create({
+      data: {
+        userId: order.userId,
+        amount: order.credits,
+        reason: "CREDIT_PACKAGE",
+        balanceAfter: user.creditBalance,
+        note: `Paket: ${order.packageId}`,
+      },
+    });
+  });
+
+  revalidatePath("/admin");
+  revalidatePath("/account");
+}
+
+export async function cancelOrderAdminAction(formData: FormData): Promise<void> {
+  await requireRole("ADMIN");
+  const orderId = String(formData.get("orderId") ?? "");
+  if (!orderId) return;
+
+  await prisma.creditOrder.updateMany({
+    where: { id: orderId, status: "PENDING" },
+    data: { status: "CANCELED" },
+  });
+
+  revalidatePath("/admin");
+}
+
 export async function resolveReportAction(formData: FormData): Promise<void> {
   await requireRole("ADMIN");
   const reportId = String(formData.get("reportId") ?? "");

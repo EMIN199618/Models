@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { createModelAction, type UploadState } from "@/actions/upload";
+import { ARTIST_REVENUE_SHARE, MODEL_CREDIT_COST } from "@/lib/pricing";
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -70,19 +71,13 @@ export function UploadForm({
           </div>
 
           <div>
-            <label className="label" htmlFor="creditCost">
-              Qiymət (Credit) *
-            </label>
-            <input
-              id="creditCost"
-              name="creditCost"
-              type="number"
-              min={0}
-              max={100}
-              defaultValue={1}
-              className="input"
-              required
-            />
+            <span className="label">Qiymət</span>
+            <p className="rounded-lg border border-border bg-surface-2 px-3 py-2 text-sm">
+              {MODEL_CREDIT_COST} Credit
+              <span className="ml-2 text-xs text-muted">
+                (vahid qiymət — bütün modellər üçün eynidir)
+              </span>
+            </p>
           </div>
         </div>
 
@@ -219,7 +214,8 @@ export function UploadForm({
       <div className="flex items-center gap-3">
         <SubmitButton />
         <p className="text-xs text-muted">
-          Model admin təsdiqindən sonra kataloqda görünəcək.
+          Model admin təsdiqindən sonra kataloqda görünəcək. Hər endirmədən
+          gəlirin {Math.round(ARTIST_REVENUE_SHARE * 100)}%-i sizə düşür.
         </p>
       </div>
     </form>
