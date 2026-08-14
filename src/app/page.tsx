@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { ModelCard } from "@/components/ModelCard";
+import { NewModelsMarquee } from "@/components/NewModelsMarquee";
 import { SearchBar } from "@/components/SearchBar";
 import { getCurrentUser } from "@/lib/auth";
 import { getCategoryTree, searchModels } from "@/lib/catalog";
@@ -50,6 +51,9 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* Yeni modellər — sağdan sola fasiləsiz lent */}
+      <NewModelsMarquee models={newest.items.slice(0, 14)} />
+
       <section>
         <div className="mb-4 flex items-baseline justify-between">
           <h2 className="text-lg font-semibold">Kateqoriyalar</h2>
@@ -77,7 +81,6 @@ export default async function HomePage() {
         models={popular.items.slice(0, 10)}
       />
 
-      <ModelSection title="Yeni əlavələr" href="/models" models={newest.items.slice(0, 10)} />
 
       <section className="card p-8 text-center">
         <h2 className="text-xl font-semibold">Artistsiniz?</h2>

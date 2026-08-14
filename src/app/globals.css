@@ -79,3 +79,57 @@ body {
            px-2 py-0.5 text-xs text-muted;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Yeni modellər lenti — sağdan sola fasiləsiz sürüşmə.
+   Lent iki dəfə təkrarlanır; -50%-ə çatanda başlanğıcla üst-üstə düşür,
+   ona görə keçid gözlə görünmür.
+--------------------------------------------------------------------------- */
+
+@keyframes marquee-rtl {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee {
+  position: relative;
+  overflow: hidden;
+  /* Kənarlarda yumşaq keçid */
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 4rem,
+    #000 calc(100% - 4rem),
+    transparent
+  );
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation-name: marquee-rtl;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+/* Kursor üzərinə gələndə dayansın ki, istifadəçi modelə klikləyə bilsin */
+.marquee:hover .marquee-track,
+.marquee:focus-within .marquee-track {
+  animation-play-state: paused;
+}
+
+/* Hərəkəti azaldılmış rejim: animasiya söndürülür, əvəzinə əl ilə sürüşdürmə */
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    overflow-x: auto;
+    mask-image: none;
+  }
+
+  .marquee-track {
+    animation: none;
+  }
+}
