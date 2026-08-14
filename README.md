@@ -41,6 +41,18 @@ Sayt: http://localhost:3000
 bazanın hazır olmasını gözləyir → miqrasiyaları tətbiq edir → Prisma client
 generasiya edir → nümunə məlumatı yükləyir.
 
+### Linux qeydləri
+
+İki tipik problem var; skript hər ikisini tanıyıb konkret həll təklif edir:
+
+| Problem | Həll |
+|---|---|
+| `permission denied … docker.sock` | `sudo usermod -aG docker $USER`, sonra yenidən daxil olun |
+| `port is already allocated` (5432) | `sudo systemctl stop postgresql` — və ya mövcud bazadan istifadə edin |
+
+Docker Compose-un həm v2 (`docker compose`), həm də v1 (`docker-compose`)
+versiyası dəstəklənir.
+
 ### Docker istifadə etmək istəmirsinizsə
 
 PostgreSQL-i özünüz qurun, `.env.example`-ı `.env` kimi kopyalayıb

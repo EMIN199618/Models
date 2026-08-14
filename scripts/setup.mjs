@@ -82,19 +82,58 @@ if (existsSync(envPath)) {
 // --- 3. Verilənlər bazası --------------------------------------------------
 
 log("PostgreSQL hazırlanır");
-const hasDocker = tryRun("docker compose version");
+
+// Docker Compose v2 (plugin) və v1 (ayrıca `docker-compose`) — hər ikisi dəstəklənir.
+const composeCmd = tryRun("docker compose version")
+  ? "docker compose"
+  : tryRun("docker-compose version")
+    ? "docker-compose"
+    : null;
+
+/** Docker xətasının səbəbini müəyyən edib konkret həll təklif edir. */
+function diagnoseDockerError(output) {
+  const text = String(output).toLowerCase();
+
+  if (text.includes("permission denied") && text.includes("docker.sock")) {
+    return [
+      "İstifadəçiniz `docker` qrupunda deyil. Linux-da bunu edin:",
+      "    sudo usermod -aG docker $USER",
+      "  Sonra sistemə yenidən daxil olun (və ya: newgrp docker).",
+    ].join("\n  ");
+  }
+  if (text.includes("port is already allocated") || text.includes("address already in use")) {
+    return [
+      "5432 portu artıq məşğuldur — çox güman lokal PostgreSQL işləyir.",
+      "  Ya onu dayandırın:  sudo systemctl stop postgresql",
+      "  Ya da mövcud bazadan istifadə edin (.env-dəki DATABASE_URL-i yoxlayın).",
+    ].join("\n  ");
+  }
+  if (text.includes("cannot connect to the docker daemon")) {
+    return "Docker demonu işləmir. Başladın:  sudo systemctl start docker";
+  }
+  return null;
+}
 
 let dockerStarted = false;
 
-if (hasDocker) {
+if (composeCmd) {
   try {
-    run("docker compose up -d");
+    // Çıxış tutulur ki, xəta baş verəndə səbəbi təhlil edə bilək.
+    const out = execSync(`${composeCmd} up -d`, {
+      cwd: ROOT,
+      stdio: "pipe",
+      encoding: "utf8",
+    });
+    if (out.trim()) console.log(out.trim());
     dockerStarted = true;
     ok("PostgreSQL konteyneri işə salındı (arxvia-db)");
-  } catch {
-    // Docker quraşdırılıb, amma işləmir (dayandırılıb, şəbəkə bloklanıb və s.).
-    // Bu, dayanmaq üçün səbəb deyil — .env-dəki baza işləyə bilər.
+  } catch (err) {
+    // Docker quraşdırılıb, amma işləmir. Bu, dayanmaq üçün səbəb deyil —
+    // .env-dəki baza işləyə bilər; aşağıdakı bağlantı yoxlaması qərar verəcək.
+    const output = `${err.stdout ?? ""}${err.stderr ?? ""}` || String(err.message ?? err);
+    const hint = diagnoseDockerError(output);
     warn("Docker konteyneri qaldırıla bilmədi — mövcud bazaya cəhd olunacaq");
+    if (hint) console.log(`      ${hint}`);
   }
 } else {
   warn("Docker tapılmadı — .env-dəki mövcud bazadan istifadə olunacaq");
@@ -124,7 +163,7 @@ if (!connected) {
   fail(
     "Verilənlər bazasına 30 saniyə ərzində qoşulmaq mümkün olmadı.",
     dockerStarted
-      ? "Konteynerin loglarına baxın: docker compose logs db"
+      ? `Konteynerin loglarına baxın: ${composeCmd} logs db`
       : [
           "Bunlardan birini edin:",
           "  • Docker Desktop-u işə salıb yenidən cəhd edin: npm run setup",
