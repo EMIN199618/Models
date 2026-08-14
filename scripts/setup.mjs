@@ -66,16 +66,35 @@ const examplePath = path.join(ROOT, ".env.example");
 if (existsSync(envPath)) {
   ok(".env onsuz da mövcuddur — toxunulmadı");
 } else {
-  if (!existsSync(examplePath)) fail(".env.example tapılmadı.");
-  copyFileSync(examplePath, envPath);
-
-  // Placeholder açarı həqiqi təsadüfi dəyərlə əvəz et.
   const secret = randomBytes(32).toString("hex");
-  const content = readFileSync(envPath, "utf8").replace(
-    /^DOWNLOAD_SECRET=.*$/m,
-    `DOWNLOAD_SECRET="${secret}"`,
-  );
-  writeFileSync(envPath, content);
+
+  if (existsSync(examplePath)) {
+    copyFileSync(examplePath, envPath);
+    // Placeholder açarı həqiqi təsadüfi dəyərlə əvəz et.
+    const content = readFileSync(envPath, "utf8").replace(
+      /^DOWNLOAD_SECRET=.*$/m,
+      `DOWNLOAD_SECRET="${secret}"`,
+    );
+    writeFileSync(envPath, content);
+  } else {
+    // .env.example olmasa da dayanmırıq — standart konfiqurasiya yazılır.
+    // (docker-compose.yml-dəki məlumatlarla eynidir.)
+    warn(".env.example tapılmadı — standart konfiqurasiya yazılır");
+    writeFileSync(
+      envPath,
+      [
+        "# PostgreSQL bağlantısı",
+        'DATABASE_URL="postgresql://marketplace:marketplace@127.0.0.1:5432/marketplace?schema=public"',
+        "",
+        "# İmzalı endirmə linklərini imzalayan açar (avtomatik generasiya olunub)",
+        `DOWNLOAD_SECRET="${secret}"`,
+        "",
+        "# Satılan faylların saxlandığı kök qovluq (public/-dən kənarda olmalıdır)",
+        'STORAGE_ROOT="./storage"',
+        "",
+      ].join("\n"),
+    );
+  }
   ok(".env yaradıldı, DOWNLOAD_SECRET təsadüfi generasiya olundu");
 }
 
@@ -175,18 +194,36 @@ ok("Baza cavab verir");
 
 // --- 4. Miqrasiya və client ------------------------------------------------
 
+// npm 12+ quraşdırma skriptlərini standart olaraq bloklayır. Prisma və esbuild
+// (tsx-in daxilindəki) məhz onlarda öz binary fayllarını endirir — bloklanıbsa
+// aşağıdakı əmrlər sınır. Səbəbi aydın olmadığı üçün konkret həll göstərilir.
+const APPROVE_SCRIPTS_HINT = [
+  "Ehtimal ki, npm quraşdırma skriptlərini bloklayıb (npm 12+ davranışı).",
+  "  Bunları ardıcıl işlədin, sonra yenidən `npm run setup`:",
+  "    npm approve-scripts --allow-scripts-pending",
+  "    npm install",
+].join("\n  ");
+
+function runStep(command, errorMessage) {
+  try {
+    run(command);
+  } catch {
+    fail(errorMessage, APPROVE_SCRIPTS_HINT);
+  }
+}
+
 log("Cədvəllər yaradılır (Prisma migrate)");
-run("npx prisma migrate deploy");
+runStep("npx prisma migrate deploy", "Miqrasiyalar tətbiq oluna bilmədi.");
 ok("Miqrasiyalar tətbiq olundu");
 
 log("Prisma client generasiya olunur");
-run("npx prisma generate");
+runStep("npx prisma generate", "Prisma client generasiya oluna bilmədi.");
 ok("Client hazırdır");
 
 // --- 5. Seed ---------------------------------------------------------------
 
 log("Nümunə məlumat yüklənir");
-run("npx tsx prisma/seed.ts");
+runStep("npx tsx prisma/seed.ts", "Nümunə məlumat yüklənə bilmədi.");
 
 // --- Nəticə ----------------------------------------------------------------
 

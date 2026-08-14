@@ -32,6 +32,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...amma nümunə fayl repoda olmalıdır — `npm run setup` ondan .env yaradır.
+!.env.example
 
 # vercel
 .vercel

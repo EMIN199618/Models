@@ -41,6 +41,23 @@ Sayt: http://localhost:3000
 bazanın hazır olmasını gözləyir → miqrasiyaları tətbiq edir → Prisma client
 generasiya edir → nümunə məlumatı yükləyir.
 
+### npm 12 və quraşdırma skriptləri
+
+npm 12-dən etibarən paketlərin `postinstall` skriptləri standart olaraq
+bloklanır. Prisma və esbuild öz binary fayllarını məhz orada endirdiyi üçün
+`npm install`-dan sonra belə bir xəbərdarlıq görsəniz:
+
+```
+npm warn allow-scripts 4 packages have install scripts not yet covered
+```
+
+bunları işlədin, sonra `npm run setup`-ı təkrarlayın:
+
+```bash
+npm approve-scripts --allow-scripts-pending
+npm install
+```
+
 ### Linux qeydləri
 
 İki tipik problem var; skript hər ikisini tanıyıb konkret həll təklif edir:
