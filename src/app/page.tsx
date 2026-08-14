@@ -3,13 +3,17 @@ import { Suspense } from "react";
 
 import { ModelCard } from "@/components/ModelCard";
 import { SearchBar } from "@/components/SearchBar";
-import { searchModels } from "@/lib/catalog";
+import { getCurrentUser } from "@/lib/auth";
+import { getCategoryTree, searchModels } from "@/lib/catalog";
 import { prisma } from "@/lib/prisma";
 
 export default async function HomePage() {
-  const [newest, popular, stats] = await Promise.all([
-    searchModels({ sort: "new", page: 1 }),
-    searchModels({ sort: "popular", page: 1 }),
+  const user = await getCurrentUser();
+
+  const [newest, popular, tree, stats] = await Promise.all([
+    searchModels({ sort: "new", page: 1 }, user?.id),
+    searchModels({ sort: "popular", page: 1 }, user?.id),
+    getCategoryTree(),
     Promise.all([
       prisma.model.count({ where: { status: "PUBLISHED" } }),
       prisma.user.count({ where: { role: "ARTIST" } }),
@@ -46,13 +50,34 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <section>
+        <div className="mb-4 flex items-baseline justify-between">
+          <h2 className="text-lg font-semibold">Kateqoriyalar</h2>
+          <Link href="/models" className="text-sm text-accent hover:underline">
+            Kataloqa keç →
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {tree.map((c) => (
+            <Link
+              key={c.slug}
+              href={`/models?category=${c.slug}`}
+              className="rounded-lg border border-border bg-surface px-4 py-3 transition-colors hover:border-accent/60"
+            >
+              <span className="block truncate text-sm font-medium">{c.name}</span>
+              <span className="text-xs text-muted">{c.count} model</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       <ModelSection
         title="Ən populyar"
         href="/models?sort=popular"
-        models={popular.items.slice(0, 8)}
+        models={popular.items.slice(0, 10)}
       />
 
-      <ModelSection title="Yeni əlavələr" href="/models" models={newest.items.slice(0, 8)} />
+      <ModelSection title="Yeni əlavələr" href="/models" models={newest.items.slice(0, 10)} />
 
       <section className="card p-8 text-center">
         <h2 className="text-xl font-semibold">Artistsiniz?</h2>
@@ -87,7 +112,7 @@ function ModelSection({
           Hamısına bax →
         </Link>
       </div>
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {models.map((m) => (
           <ModelCard key={m.slug} model={m} />
         ))}

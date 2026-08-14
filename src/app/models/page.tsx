@@ -4,7 +4,9 @@ import { Suspense } from "react";
 import { CatalogFilters } from "@/components/CatalogFilters";
 import { ModelCard } from "@/components/ModelCard";
 import { SearchBar } from "@/components/SearchBar";
-import { getFilterOptions, parseFilters, searchModels } from "@/lib/catalog";
+import { SortSelect } from "@/components/SortSelect";
+import { getCurrentUser } from "@/lib/auth";
+import { getBreadcrumb, getFilterOptions, parseFilters, searchModels } from "@/lib/catalog";
 
 export const metadata = { title: "Kataloq" };
 
@@ -14,49 +16,78 @@ export default async function CatalogPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const filters = parseFilters(await searchParams);
-  const [{ items, total, page, pageCount }, options] = await Promise.all([
-    searchModels(filters),
+  const user = await getCurrentUser();
+
+  const [{ items, total, page, pageCount }, options, breadcrumb] = await Promise.all([
+    searchModels(filters, user?.id),
     getFilterOptions(),
+    getBreadcrumb(filters.category),
   ]);
 
+  const heading =
+    breadcrumb.length > 0
+      ? breadcrumb[breadcrumb.length - 1].name
+      : filters.q
+        ? `"${filters.q}" üzrə nəticələr`
+        : "Bütün modellər";
+
   return (
-    <div className="grid gap-8 lg:grid-cols-[220px_1fr]">
+    <div className="grid gap-8 lg:grid-cols-[230px_1fr]">
       <Suspense fallback={<div className="text-sm text-muted">Filtrlər…</div>}>
-        <CatalogFilters categories={options.categories} formats={options.formats} />
+        <CatalogFilters tree={options.tree} formats={options.formats} />
       </Suspense>
 
-      <div>
+      <div className="min-w-0">
         <Suspense fallback={null}>
           <SearchBar className="mb-5 max-w-xl" />
         </Suspense>
 
-        <div className="mb-4 flex items-baseline justify-between">
+        {breadcrumb.length > 0 && (
+          <nav className="mb-2 flex items-center gap-1.5 text-xs text-muted">
+            <Link href="/models" className="hover:text-accent">
+              Kataloq
+            </Link>
+            {breadcrumb.map((crumb, i) => (
+              <span key={crumb.slug} className="flex items-center gap-1.5">
+                <span aria-hidden>/</span>
+                {i === breadcrumb.length - 1 ? (
+                  <span className="text-foreground">{crumb.name}</span>
+                ) : (
+                  <Link href={`/models?category=${crumb.slug}`} className="hover:text-accent">
+                    {crumb.name}
+                  </Link>
+                )}
+              </span>
+            ))}
+          </nav>
+        )}
+
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
           <h1 className="text-xl font-semibold">
-            {filters.q ? `"${filters.q}" üzrə nəticələr` : "Bütün modellər"}
+            {heading}
+            <span className="ml-2 text-sm font-normal text-muted">{total} model</span>
           </h1>
-          <span className="text-sm text-muted">{total} model</span>
+          <Suspense fallback={null}>
+            <SortSelect />
+          </Suspense>
         </div>
 
         {items.length === 0 ? (
-          <div className="card p-10 text-center">
-            <p className="text-sm text-muted">
-              Bu filtrlərə uyğun model tapılmadı.
-            </p>
+          <div className="rounded-xl border border-border bg-surface p-10 text-center">
+            <p className="text-sm text-muted">Bu filtrlərə uyğun model tapılmadı.</p>
             <Link href="/models" className="mt-3 inline-block text-sm text-accent hover:underline">
               Filtrləri sıfırla
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
             {items.map((m) => (
               <ModelCard key={m.slug} model={m} />
             ))}
           </div>
         )}
 
-        {pageCount > 1 && (
-          <Pagination page={page} pageCount={pageCount} filters={filters} />
-        )}
+        {pageCount > 1 && <Pagination page={page} pageCount={pageCount} filters={filters} />}
       </div>
     </div>
   );

@@ -43,27 +43,32 @@ export async function purchaseAction(
   return { ok: true };
 }
 
-export async function toggleFavoriteAction(formData: FormData): Promise<void> {
-  const slug = String(formData.get("slug") ?? "");
-  const user = await requireUser();
+export type FavoriteResult = { ok: boolean; favorited: boolean };
+
+/** Seçilmişlərə əlavə edir və ya çıxarır. Nəticəni klient optimist UI üçün alır. */
+export async function toggleFavoriteAction(slug: string): Promise<FavoriteResult> {
+  let user;
+  try {
+    user = await requireUser();
+  } catch {
+    return { ok: false, favorited: false };
+  }
 
   const model = await prisma.model.findUnique({
     where: { slug },
     select: { id: true },
   });
-  if (!model) return;
+  if (!model) return { ok: false, favorited: false };
 
-  const existing = await prisma.favorite.findUnique({
-    where: { userId_modelId: { userId: user.id, modelId: model.id } },
-  });
+  const key = { userId_modelId: { userId: user.id, modelId: model.id } };
+  const existing = await prisma.favorite.findUnique({ where: key });
 
   if (existing) {
-    await prisma.favorite.delete({
-      where: { userId_modelId: { userId: user.id, modelId: model.id } },
-    });
+    await prisma.favorite.delete({ where: key });
   } else {
     await prisma.favorite.create({ data: { userId: user.id, modelId: model.id } });
   }
 
-  revalidatePath(`/models/${slug}`);
+  revalidatePath("/favorites");
+  return { ok: true, favorited: !existing };
 }

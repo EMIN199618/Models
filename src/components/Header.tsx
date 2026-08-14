@@ -15,6 +15,11 @@ export function Header({ user }: { user: SessionUser | null }) {
           <Link href="/models" className="hover:text-foreground">
             Kataloq
           </Link>
+          {user ? (
+            <Link href="/favorites" className="hover:text-foreground">
+              Seçilmişlər
+            </Link>
+          ) : null}
           {user?.role === "ARTIST" || user?.role === "ADMIN" ? (
             <Link href="/studio" className="hover:text-foreground">
               Studiya

@@ -47,7 +47,12 @@ function buildWhere(f: CatalogFilters): Prisma.ModelWhereInput {
       { tags: { some: { tag: { name: { contains: f.q, mode: "insensitive" } } } } },
     ];
   }
-  if (f.category) where.category = { slug: f.category };
+  if (f.category) {
+    // Valideyn kateqoriya seçiləndə onun bütün alt kateqoriyaları da daxildir.
+    where.category = {
+      OR: [{ slug: f.category }, { parent: { slug: f.category } }],
+    };
+  }
   if (f.renderer && f.renderer !== "ALL") {
     where.renderer = f.renderer as Prisma.ModelWhereInput["renderer"];
   }
@@ -103,7 +108,10 @@ function toCard(m: RawCard): ModelCardData {
   };
 }
 
-export async function searchModels(f: CatalogFilters): Promise<{
+export async function searchModels(
+  f: CatalogFilters,
+  userId?: string,
+): Promise<{
   items: ModelCardData[];
   total: number;
   page: number;
@@ -118,26 +126,81 @@ export async function searchModels(f: CatalogFilters): Promise<{
       orderBy: buildOrderBy(f),
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
-      select: CARD_SELECT,
+      select: { ...CARD_SELECT, id: true },
     }),
     prisma.model.count({ where }),
   ]);
 
+  const items = rows.map(toCard);
+
+  // Girişli istifadəçi üçün seçilmişlər — tək sorğu ilə.
+  if (userId && rows.length > 0) {
+    const favorites = await prisma.favorite.findMany({
+      where: { userId, modelId: { in: rows.map((r) => r.id) } },
+      select: { modelId: true },
+    });
+    const favSet = new Set(favorites.map((f) => f.modelId));
+    rows.forEach((row, i) => {
+      items[i].isFavorite = favSet.has(row.id);
+    });
+  }
+
   return {
-    items: rows.map(toCard),
+    items,
     total,
     page,
     pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)),
   };
 }
 
-export async function getFilterOptions() {
-  const [categories, formatRows] = await Promise.all([
+export type CategoryTreeNode = {
+  slug: string;
+  name: string;
+  count: number;
+  children: { slug: string; name: string; count: number }[];
+};
+
+/**
+ * Kateqoriya ağacı + hər düyündə model sayı.
+ * Valideynin sayı öz alt kateqoriyalarının cəmidir.
+ */
+export async function getCategoryTree(): Promise<CategoryTreeNode[]> {
+  const [categories, counts] = await Promise.all([
     prisma.category.findMany({
-      where: { parentId: null },
-      orderBy: { name: "asc" },
-      select: { slug: true, name: true, _count: { select: { models: true } } },
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      select: { id: true, slug: true, name: true, parentId: true },
     }),
+    prisma.model.groupBy({
+      by: ["categoryId"],
+      where: { status: "PUBLISHED" },
+      _count: { _all: true },
+    }),
+  ]);
+
+  const countById = new Map(
+    counts
+      .filter((c) => c.categoryId !== null)
+      .map((c) => [c.categoryId as string, c._count._all]),
+  );
+
+  const parents = categories.filter((c) => c.parentId === null);
+
+  return parents.map((parent) => {
+    const children = categories
+      .filter((c) => c.parentId === parent.id)
+      .map((c) => ({ slug: c.slug, name: c.name, count: countById.get(c.id) ?? 0 }));
+
+    // Valideynin öz birbaşa modelləri (varsa) + alt kateqoriyaların cəmi
+    const own = countById.get(parent.id) ?? 0;
+    const total = own + children.reduce((sum, c) => sum + c.count, 0);
+
+    return { slug: parent.slug, name: parent.name, count: total, children };
+  });
+}
+
+export async function getFilterOptions() {
+  const [tree, formatRows] = await Promise.all([
+    getCategoryTree(),
     prisma.model.findMany({
       where: { status: "PUBLISHED" },
       select: { formats: true },
@@ -145,5 +208,29 @@ export async function getFilterOptions() {
   ]);
 
   const formats = [...new Set(formatRows.flatMap((r) => r.formats))].sort();
-  return { categories, formats };
+  return { tree, formats };
+}
+
+/** Seçilmiş kateqoriya üçün "Kataloq / Mebel / Divan" naviqasiya zənciri. */
+export async function getBreadcrumb(
+  slug: string | undefined,
+): Promise<{ slug: string; name: string }[]> {
+  if (!slug) return [];
+
+  const category = await prisma.category.findUnique({
+    where: { slug },
+    select: {
+      slug: true,
+      name: true,
+      parent: { select: { slug: true, name: true } },
+    },
+  });
+  if (!category) return [];
+
+  return category.parent
+    ? [
+        { slug: category.parent.slug, name: category.parent.name },
+        { slug: category.slug, name: category.name },
+      ]
+    : [{ slug: category.slug, name: category.name }];
 }

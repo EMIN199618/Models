@@ -10,6 +10,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 
 import { PrismaClient } from "../src/generated/prisma/client.js";
 import { makeBoxGlb, makeZip } from "./fixtures.js";
+import { TAXONOMY } from "./taxonomy.js";
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
@@ -19,15 +20,6 @@ const PUBLIC_UPLOADS = path.resolve("./public/uploads");
 const STORAGE_ROOT = path.resolve(process.env.STORAGE_ROOT ?? "./storage");
 
 // ---------------------------------------------------------------------------
-
-const CATEGORIES = [
-  { slug: "yumsaq-mebel", name: "Yumşaq mebel" },
-  { slug: "masa-stul", name: "Masa və stul" },
-  { slug: "isiqlandirma", name: "İşıqlandırma" },
-  { slug: "dekor", name: "Dekor" },
-  { slug: "saxlama", name: "Saxlama sistemləri" },
-  { slug: "santexnika", name: "Santexnika" },
-];
 
 type SeedModel = {
   title: string;
@@ -52,7 +44,7 @@ const MODELS: SeedModel[] = [
     title: "Modul künc divan — velur",
     description:
       "Üç modullu künc divan. Velur teksturaları 4K həllində, Corona materialları hazır vəziyyətdə qurulub.\nÖlçülər: 320 × 210 × 85 sm.",
-    category: "yumsaq-mebel",
+    category: "divan",
     creditCost: 3,
     renderer: "CORONA",
     formats: ["max", "fbx"],
@@ -70,7 +62,7 @@ const MODELS: SeedModel[] = [
     title: "Skandinav yemək masası — palıd",
     description:
       "Təbii palıd örtüklü yemək masası, 6 nəfərlik. V-Ray və Corona üçün ayrı material dəstləri daxildir.",
-    category: "masa-stul",
+    category: "masa",
     creditCost: 2,
     renderer: "BOTH",
     formats: ["max", "fbx", "obj"],
@@ -88,7 +80,7 @@ const MODELS: SeedModel[] = [
     title: "Asma çilçıraq — mis borular",
     description:
       "12 lampalı dekorativ asma çilçıraq. IES işıq profili faylı arxivə daxildir.",
-    category: "isiqlandirma",
+    category: "cilciraq",
     creditCost: 2,
     renderer: "CORONA",
     formats: ["max"],
@@ -105,7 +97,7 @@ const MODELS: SeedModel[] = [
   {
     title: "Kitab rəfi — metal karkas",
     description: "Beş səviyyəli açıq kitab rəfi. Aşağı poliqonlu, səhnə üçün optimallaşdırılıb.",
-    category: "saxlama",
+    category: "ref",
     creditCost: 1,
     renderer: "VRAY",
     formats: ["max", "fbx"],
@@ -122,7 +114,7 @@ const MODELS: SeedModel[] = [
   {
     title: "Akrilik vanna — ayaqlı",
     description: "Sərbəst dayanan ayaqlı vanna. Su səthi üçün ayrıca material daxildir.",
-    category: "santexnika",
+    category: "vanna",
     creditCost: 2,
     renderer: "CORONA",
     formats: ["max", "obj"],
@@ -139,7 +131,7 @@ const MODELS: SeedModel[] = [
   {
     title: "Dekorativ vaza dəsti (3 ədəd)",
     description: "Keramik vaza dəsti. Pulsuz nümunə — kolleksiyanın keyfiyyətini yoxlamaq üçün.",
-    category: "dekor",
+    category: "vaza",
     creditCost: 0,
     renderer: "BOTH",
     formats: ["max", "fbx", "obj"],
@@ -156,7 +148,7 @@ const MODELS: SeedModel[] = [
   {
     title: "Ofis kreslosu — tor arxalıq",
     description: "Erqonomik ofis kreslosu, hərəkət edən hissələri ayrı obyektlərdir.",
-    category: "masa-stul",
+    category: "ofis-kreslosu",
     creditCost: 2,
     renderer: "VRAY",
     formats: ["max", "fbx"],
@@ -173,7 +165,7 @@ const MODELS: SeedModel[] = [
   {
     title: "Divar panelləri — reyka (parametrik)",
     description: "Şaquli taxta reyka divar paneli. Uzunluğu asanlıqla dəyişdirilə bilər.",
-    category: "dekor",
+    category: "divar-paneli",
     creditCost: 1,
     renderer: "CORONA",
     formats: ["max"],
@@ -190,6 +182,88 @@ const MODELS: SeedModel[] = [
 ];
 
 // ---------------------------------------------------------------------------
+
+/**
+ * Hər alt kateqoriya üçün nümunə model generasiya edir.
+ * Məqsəd: kataloqun, filtrlərin və səhifələmənin real şəraitdə görünməsi.
+ */
+function generateFillerModels(): SeedModel[] {
+  const STYLES = [
+    "Modern",
+    "Klassik",
+    "Skandinav",
+    "Loft",
+    "Minimalist",
+    "Neoklassik",
+    "Art Deco",
+    "Provans",
+    "Yapon",
+    "İndustrial",
+  ];
+  const MATERIALS = ["palıd", "qoz ağacı", "metal", "mərmər", "keramika", "parça", "şüşə", "mis"];
+  const PALETTE: [number, number, number][] = [
+    [0.42, 0.45, 0.55],
+    [0.65, 0.48, 0.3],
+    [0.72, 0.45, 0.2],
+    [0.28, 0.3, 0.34],
+    [0.85, 0.8, 0.72],
+    [0.55, 0.38, 0.24],
+    [0.35, 0.42, 0.38],
+    [0.78, 0.72, 0.62],
+    [0.5, 0.24, 0.24],
+    [0.2, 0.28, 0.4],
+  ];
+  const RENDERERS = ["CORONA", "VRAY", "BOTH"] as const;
+  const FORMAT_SETS = [
+    ["max"],
+    ["max", "fbx"],
+    ["max", "fbx", "obj"],
+    ["max", "obj"],
+  ];
+  const VERSIONS = ["2018", "2019", "2020", "2021", "2022"];
+
+  // Determinist seçim — seed hər dəfə eyni nəticəni versin.
+  let counter = 0;
+  const pick = <T,>(arr: readonly T[]): T => arr[counter++ % arr.length];
+
+  const out: SeedModel[] = [];
+
+  for (const parent of TAXONOMY) {
+    for (const child of parent.children) {
+      const style = pick(STYLES);
+      const material = pick(MATERIALS);
+      const poly = 8_000 + ((counter * 7919) % 240_000);
+
+      out.push({
+        title: `${style} ${child.name.toLowerCase()} — ${material}`,
+        description:
+          `${child.name} modeli, ${style.toLowerCase()} üslubda. Materiallar ` +
+          `${material} əsasındadır və render mühərriki üçün hazır qurulub.\n` +
+          `Səhnəyə birbaşa import edilə bilər.`,
+        category: child.slug,
+        creditCost: counter % 7 === 0 ? 0 : 1 + (counter % 3),
+        renderer: pick(RENDERERS),
+        formats: pick(FORMAT_SETS),
+        maxVersion: pick(VERSIONS),
+        polyCount: poly,
+        vertexCount: Math.round(poly * 0.55),
+        isPbr: counter % 3 !== 0,
+        tags: [child.name.toLowerCase(), style.toLowerCase(), material, parent.name.toLowerCase()],
+        box: {
+          x: 0.4 + ((counter * 13) % 25) / 10,
+          y: 0.4 + ((counter * 7) % 22) / 10,
+          z: 0.3 + ((counter * 11) % 18) / 10,
+        },
+        color: pick(PALETTE),
+        // Rəsmi modellərin müəllifi həmişə platformanın öz hesabıdır (indeks 0).
+        official: counter % 4 === 0,
+        artist: counter % 4 === 0 ? 0 : 1 + (counter % 2),
+      });
+    }
+  }
+
+  return out;
+}
 
 /** Render şəkli imitasiyası — qradiyent fon + obyektin siluети. */
 async function makeRenderImage(
@@ -282,11 +356,25 @@ async function main() {
     prisma.user.deleteMany(),
   ]);
 
-  // --- kateqoriyalar ---
-  for (const c of CATEGORIES) {
-    await prisma.category.create({ data: c });
+  // --- kateqoriyalar (iki səviyyəli ağac) ---
+  let subCount = 0;
+  for (const [pIndex, parent] of TAXONOMY.entries()) {
+    const created = await prisma.category.create({
+      data: { slug: parent.slug, name: parent.name, sortOrder: pIndex },
+    });
+    for (const [cIndex, child] of parent.children.entries()) {
+      await prisma.category.create({
+        data: {
+          slug: child.slug,
+          name: child.name,
+          parentId: created.id,
+          sortOrder: cIndex,
+        },
+      });
+      subCount++;
+    }
   }
-  console.log(`  ${CATEGORIES.length} kateqoriya`);
+  console.log(`  ${TAXONOMY.length} əsas + ${subCount} alt kateqoriya`);
 
   // --- istifadəçilər ---
   const password = await bcrypt.hash("parol1234", 12);
@@ -359,7 +447,10 @@ async function main() {
   // --- modellər ---
   const authors = [admin, ...artists];
 
-  for (const [index, m] of MODELS.entries()) {
+  // Kataloq boş görünməsin deyə hər alt kateqoriyaya nümunə modellər.
+  const allModels = [...MODELS, ...generateFillerModels()];
+
+  for (const [index, m] of allModels.entries()) {
     const category = await prisma.category.findUnique({ where: { slug: m.category } });
     const author = authors[m.artist];
 
@@ -427,7 +518,9 @@ async function main() {
     });
 
     // Render şəkilləri — açıq
-    for (let v = 0; v < 3; v++) {
+    // Detallı modellərdə 3, generasiya olunanlarda 2 render şəkli.
+    const imageCount = index < MODELS.length ? 3 : 2;
+    for (let v = 0; v < imageCount; v++) {
       const img = await makeRenderImage(m.title, m.color, v);
       const key = `models/${model.id}/render-${v}.jpg`;
       await writePublic(key, img);
@@ -454,7 +547,10 @@ async function main() {
       await prisma.modelTag.create({ data: { modelId: model.id, tagId: tag.id } });
     }
 
-    console.log(`  model: ${m.title}`);
+    if (index < MODELS.length) console.log(`  model: ${m.title}`);
+    else if (index === MODELS.length) {
+      console.log(`  + ${allModels.length - MODELS.length} nümunə model generasiya olunur…`);
+    }
   }
 
   // --- moderasiya növbəsində bir model (admin panelini yoxlamaq üçün) ---

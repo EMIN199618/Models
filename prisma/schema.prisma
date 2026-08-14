@@ -125,9 +125,13 @@ model Session {
 // ---------------------------------------------------------------------------
 
 model Category {
-  id       String     @id @default(cuid())
-  slug     String     @unique
-  name     String
+  id   String @id @default(cuid())
+  slug String @unique
+  name String
+
+  /// Kataloqdakı görünmə sırası. Əlifba yox, əhəmiyyət sırası (Mebel birinci).
+  sortOrder Int @default(0)
+
   parentId String?
   parent   Category?  @relation("SubCategories", fields: [parentId], references: [id], onDelete: SetNull)
   children Category[] @relation("SubCategories")

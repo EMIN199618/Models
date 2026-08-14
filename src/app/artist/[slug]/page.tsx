@@ -96,7 +96,7 @@ export default async function ArtistPage({
           Bu artistin hələ dərc olunmuş modeli yoxdur.
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
           {cards.map((m) => (
             <ModelCard key={m.slug} model={m} />
           ))}
