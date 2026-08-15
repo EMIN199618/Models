@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import {
   ARTIST_REVENUE_SHARE,
   CREDIT_PACKAGES,
+  CREDIT_VALIDITY_DAYS,
+  DOWNLOAD_WINDOW_HOURS,
   formatCredits,
   MODEL_CREDIT_COST,
   REFERRAL_BONUS_CREDITS,
@@ -28,8 +30,8 @@ export default async function PricingPage() {
         <h1 className="text-3xl font-semibold">Credit paketləri</h1>
         <p className="mx-auto mt-3 max-w-2xl text-muted">
           Kataloqdakı hər model {MODEL_CREDIT_COST} Credit-dir. Credit alıb
-          istədiyiniz modeli endirin — abunə məcburiyyəti yoxdur, Credit-lərin
-          müddəti bitmir.
+          istədiyiniz modeli endirin. Alınan Credit-lər{" "}
+          {CREDIT_VALIDITY_DAYS} gün ərzində istifadə edilməlidir.
         </p>
         {user && (
           <p className="mt-3 text-sm">
@@ -51,6 +53,23 @@ export default async function PricingPage() {
           />
         ))}
       </div>
+
+      <section className="rounded-xl border border-border bg-surface p-6">
+        <h2 className="text-lg font-semibold">İstifadə şərtləri</h2>
+        <ul className="mt-3 space-y-2 text-sm text-muted">
+          <li>
+            • Alınan Credit-lər <strong className="text-foreground">{CREDIT_VALIDITY_DAYS} gün</strong>{" "}
+            ərzində istifadə edilməlidir; müddət bitəndə qalan Credit-lər yanır.
+          </li>
+          <li>
+            • Model alındıqdan sonra fayl{" "}
+            <strong className="text-foreground">{DOWNLOAD_WINDOW_HOURS} saat</strong> ərzində
+            endirilə bilər (şəbəkə kəsilsə, təkrar cəhd üçün). Bu müddətdən sonra
+            modeli yenidən endirmək üçün yeni alış tələb olunur.
+          </li>
+          <li>• Endirdiyiniz fayl həmişəlik sizindir — layihələrinizdə sərbəst istifadə edin.</li>
+        </ul>
+      </section>
 
       <section className="rounded-xl border border-border bg-surface p-6">
         <h2 className="text-lg font-semibold">Ödəniş necə aparılır?</h2>

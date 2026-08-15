@@ -64,8 +64,29 @@ async function makeSession(userId: string): Promise<string> {
   return `m3d_session=${token}`;
 }
 
+
+/** Test üçün balansı sıfırlayıb bir lot yaradır (Credit-lər lot əsaslıdır). */
+async function setBalance(userId: string, amount: number): Promise<void> {
+  await prisma.creditTransaction.deleteMany({ where: { userId } });
+  if (amount > 0) {
+    await prisma.creditTransaction.create({
+      data: {
+        userId,
+        amount,
+        reason: "ADMIN_GRANT",
+        balanceAfter: amount,
+        remaining: amount,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      },
+    });
+  }
+  await prisma.user.update({ where: { id: userId }, data: { creditBalance: amount } });
+}
+
 async function main() {
-  const { purchaseModel, CreditError } = await import("../src/lib/credits.js");
+  const { purchaseModel, CreditError, getValidBalance } = await import(
+    "../src/lib/credits.js"
+  );
 
   const buyer = await prisma.user.findUniqueOrThrow({
     where: { email: "dizayner@example.com" },
@@ -77,11 +98,7 @@ async function main() {
 
   // Təmiz başlanğıc
   await prisma.entitlement.deleteMany({ where: { userId: buyer.id } });
-  await prisma.creditTransaction.deleteMany({ where: { userId: buyer.id } });
-  await prisma.user.update({
-    where: { id: buyer.id },
-    data: { creditBalance: 25 },
-  });
+  await setBalance(buyer.id, 25);
 
   const cookie = await makeSession(buyer.id);
 
@@ -105,7 +122,7 @@ async function main() {
   // 3 — alış
   const before = 25;
   await purchaseModel({ userId: buyer.id, modelId: paidModel.id });
-  const afterUser = await prisma.user.findUniqueOrThrow({ where: { id: buyer.id } });
+  const afterUser = { creditBalance: await getValidBalance(buyer.id) };
   check(
     "Alışdan sonra balans düzgün azalır",
     afterUser.creditBalance === before - paidModel.creditCost,
@@ -139,17 +156,42 @@ async function main() {
     (owned.headers.get("content-disposition") ?? "").startsWith("attachment"),
   );
 
-  // 5 — təkrar alış Credit tutmur
+  // 5 — endirmə pəncərəsi açıq ikən təkrar alış Credit tutmur
   const balanceBeforeRepeat = afterUser.creditBalance;
   const repeat = await purchaseModel({ userId: buyer.id, modelId: paidModel.id });
-  const afterRepeat = await prisma.user.findUniqueOrThrow({ where: { id: buyer.id } });
+  const afterRepeat = { creditBalance: await getValidBalance(buyer.id) };
   check(
-    "Təkrar alışda Credit ikinci dəfə tutulmur",
+    "Endirmə pəncərəsi açıq ikən təkrar Credit tutulmur",
     repeat.alreadyOwned === true && afterRepeat.creditBalance === balanceBeforeRepeat,
   );
 
+  // 5b — pəncərə bitəndən sonra yeni alış TƏLƏB OLUNUR (təkrar endirmə pulsuz deyil)
+  await prisma.entitlement.updateMany({
+    where: { userId: buyer.id, modelId: paidModel.id },
+    data: { expiresAt: new Date(Date.now() - 1000) },
+  });
+  const expiredAccess = await fetch(`${BASE}/api/download/${paidModel.id}`, {
+    headers: { cookie },
+    redirect: "manual",
+  });
+  check(
+    "Müddəti bitmiş hüquqla endirmə rədd edilir",
+    expiredAccess.status === 403,
+    `(status ${expiredAccess.status})`,
+  );
+
+  const balanceBeforeRebuy = await getValidBalance(buyer.id);
+  const rebuy = await purchaseModel({ userId: buyer.id, modelId: paidModel.id });
+  const afterRebuy = { creditBalance: await getValidBalance(buyer.id) };
+  check(
+    "Müddət bitəndən sonra təkrar alış Credit tutur",
+    rebuy.alreadyOwned === false &&
+      afterRebuy.creditBalance === balanceBeforeRebuy - paidModel.creditCost,
+    `(${balanceBeforeRebuy} → ${afterRebuy.creditBalance})`,
+  );
+
   // 6 — balans çatmır
-  await prisma.user.update({ where: { id: buyer.id }, data: { creditBalance: 0 } });
+  await setBalance(buyer.id, 0);
   const expensive = await prisma.model.findFirstOrThrow({
     where: { status: "PUBLISHED", creditCost: { gt: 0 }, id: { not: paidModel.id } },
   });
@@ -159,7 +201,7 @@ async function main() {
   } catch (e) {
     rejected = e instanceof CreditError && e.code === "INSUFFICIENT";
   }
-  const afterFail = await prisma.user.findUniqueOrThrow({ where: { id: buyer.id } });
+  const afterFail = { creditBalance: await getValidBalance(buyer.id) };
   const entitlementCount = await prisma.entitlement.count({
     where: { userId: buyer.id, modelId: expensive.id },
   });

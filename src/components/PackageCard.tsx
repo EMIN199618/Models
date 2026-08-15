@@ -6,10 +6,10 @@ import { useFormStatus } from "react-dom";
 
 import { createOrderAction, type OrderState } from "@/actions/orders";
 import {
+  CREDIT_VALIDITY_DAYS,
   formatCredits,
   formatMinor,
   MODEL_CREDIT_COST,
-  pricePerModel,
   type CreditPackage,
 } from "@/lib/pricing";
 
@@ -78,15 +78,14 @@ export function PackageCard({
         </li>
         <li className="flex gap-2">
           <span className="text-success">✓</span>
-          <span>Model başına ≈ {formatMinor(Math.round(pricePerModel(pkg)))}</span>
+          <span>
+            Credit-lər <strong className="text-foreground">{CREDIT_VALIDITY_DAYS} gün</strong>{" "}
+            etibarlıdır
+          </span>
         </li>
         <li className="flex gap-2">
           <span className="text-success">✓</span>
-          <span>Credit-lərin müddəti bitmir</span>
-        </li>
-        <li className="flex gap-2">
-          <span className="text-success">✓</span>
-          <span>Alınan modeli təkrar endirmək pulsuzdur</span>
+          <span>Endirilən fayl həmişəlik sizindir</span>
         </li>
       </ul>
 

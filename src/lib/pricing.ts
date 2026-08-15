@@ -11,6 +11,21 @@ export const MODEL_CREDIT_COST = 10;
 /** Artistin payı. Qalanı platformanındır (60/40). */
 export const ARTIST_REVENUE_SHARE = 0.6;
 
+/**
+ * Alınan Credit-lərin etibarlılıq müddəti (gün).
+ * Müddət bitəndə istifadə olunmamış Credit-lər yanır.
+ */
+export const CREDIT_VALIDITY_DAYS = 30;
+
+/**
+ * Alışdan sonra faylın endirilə biləcəyi müddət (saat).
+ *
+ * Bu müddət ərzində eyni model təkrar endirilə bilər — şəbəkə kəsiləndə
+ * istifadəçi Credit-ini itirməsin deyə. Müddət bitəndən sonra modeli
+ * yenidən almaq lazımdır; təkrar endirmə pulsuz deyil.
+ */
+export const DOWNLOAD_WINDOW_HOURS = 24;
+
 /** Dostunu dəvət edən kodu daxil edən yeni istifadəçiyə verilən bonus. */
 export const REFERRAL_BONUS_CREDITS = 200;
 

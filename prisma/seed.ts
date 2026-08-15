@@ -11,7 +11,11 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client.js";
 import { makeBoxGlb, makeZip } from "./fixtures.js";
 import { TAXONOMY } from "./taxonomy.js";
-import { MODEL_CREDIT_COST, REFERRAL_BONUS_CREDITS } from "../src/lib/pricing.js";
+import {
+  CREDIT_VALIDITY_DAYS,
+  MODEL_CREDIT_COST,
+  REFERRAL_BONUS_CREDITS,
+} from "../src/lib/pricing.js";
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
@@ -430,6 +434,8 @@ async function main() {
         reason,
         balanceAfter: amount,
         note: "Seed",
+        remaining: amount,
+        expiresAt: new Date(Date.now() + CREDIT_VALIDITY_DAYS * 24 * 60 * 60 * 1000),
       },
     });
   }

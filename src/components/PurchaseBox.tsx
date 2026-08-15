@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { purchaseAction } from "@/actions/models";
+import { DOWNLOAD_WINDOW_HOURS } from "@/lib/pricing";
 
 function SubmitButton({ cost }: { cost: number }) {
   const { pending } = useFormStatus();
@@ -55,13 +56,14 @@ export function PurchaseBox({
     return (
       <div className="card space-y-3 p-4">
         <p className="flex items-center gap-2 text-sm text-success">
-          <span aria-hidden>✓</span> Bu model sizindir
+          <span aria-hidden>✓</span> Endirmə hüququnuz var
         </p>
         <a href={`/api/download/${modelId}`} className="btn-primary w-full">
           Faylı endir
         </a>
         <p className="text-xs text-muted">
-          Təkrar endirmələr pulsuzdur — Credit yenidən tutulmur.
+          Endirmə linki {DOWNLOAD_WINDOW_HOURS} saat aktivdir. Bu müddətdən sonra
+          modeli yenidən endirmək üçün yeni alış lazımdır.
         </p>
       </div>
     );

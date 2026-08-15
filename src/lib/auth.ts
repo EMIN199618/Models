@@ -99,7 +99,13 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   });
 
   if (!session || session.expiresAt < new Date()) return null;
-  return session.user;
+
+  // Balans lotlardan hesablanır ki, müddəti bitmiş Credit-lər görünməsin.
+  // (Saxlanılan `creditBalance` sütunu son yazma anındakı vəziyyəti göstərir.)
+  const { getValidBalance } = await import("@/lib/credits");
+  const creditBalance = await getValidBalance(session.user.id);
+
+  return { ...session.user, creditBalance };
 }
 
 // --- icazə yoxlamaları ---------------------------------------------------

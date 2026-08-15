@@ -251,8 +251,12 @@ model Asset {
 // Alış / endirmə
 // ---------------------------------------------------------------------------
 
-/// İstifadəçinin modeli endirmə HÜQUQU. Credit bir dəfə tutulur;
-/// sonrakı endirmələr pulsuzdur (satın alınmış məhsul yenidən endirilə bilər).
+/// İstifadəçinin modeli endirmə hüququ — MÜDDƏTLİDİR.
+///
+/// Alışdan sonra məhdud müddət ərzində (bax pricing.ts → DOWNLOAD_WINDOW_HOURS)
+/// fayl endirilə bilər; bu, şəbəkə kəsilməsi halında təkrar cəhdə imkan verir.
+/// Müddət bitəndən sonra modeli yenidən almaq lazımdır — hər alış ayrıca
+/// sətirdir, ona görə (userId, modelId) unikal DEYİL.
 model Entitlement {
   id           String   @id @default(cuid())
   userId       String
@@ -261,10 +265,11 @@ model Entitlement {
   model        Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
   creditsSpent Int
   createdAt    DateTime @default(now())
+  expiresAt    DateTime
 
   earning ArtistEarning?
 
-  @@unique([userId, modelId])
+  @@index([userId, modelId, expiresAt])
   @@index([modelId])
 }
 
@@ -284,7 +289,10 @@ model DownloadLog {
 }
 
 /// Credit hərəkətlərinin dəyişilməz jurnalı (ledger).
-/// User.creditBalance bunun cəmi ilə üst-üstə düşməlidir.
+///
+/// Müsbət yazı eyni zamanda bir "lot"dur: öz bitmə tarixi (expiresAt) və
+/// qalığı (remaining) var. Balans yalnız müddəti bitməmiş lotların
+/// qalıqlarının cəmidir. Xərcləmə müddəti ən tez bitən lotdan başlayır.
 model CreditTransaction {
   id           String       @id @default(cuid())
   userId       String
@@ -297,7 +305,13 @@ model CreditTransaction {
   note         String?
   createdAt    DateTime     @default(now())
 
+  /// Yalnız müsbət yazılarda: bu Credit-lərin nə vaxt yanacağı.
+  expiresAt DateTime?
+  /// Yalnız müsbət yazılarda: hələ xərclənməmiş qalıq.
+  remaining Int       @default(0)
+
   @@index([userId, createdAt])
+  @@index([userId, expiresAt])
 }
 
 /// Abunə. MVP-də ödəniş şlüzü yoxdur — status admin tərəfindən idarə olunur.

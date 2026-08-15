@@ -45,8 +45,27 @@ function check(name: string, ok: boolean, detail = "") {
   }
 }
 
+
+/** Test üçün balansı sıfırlayıb bir lot yaradır (Credit-lər lot əsaslıdır). */
+async function setBalance(userId: string, amount: number): Promise<void> {
+  await prisma.creditTransaction.deleteMany({ where: { userId } });
+  if (amount > 0) {
+    await prisma.creditTransaction.create({
+      data: {
+        userId,
+        amount,
+        reason: "ADMIN_GRANT",
+        balanceAfter: amount,
+        remaining: amount,
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      },
+    });
+  }
+  await prisma.user.update({ where: { id: userId }, data: { creditBalance: amount } });
+}
+
 async function main() {
-  const { purchaseModel } = await import("../src/lib/credits.js");
+  const { purchaseModel, getValidBalance } = await import("../src/lib/credits.js");
   const pricing = await import("../src/lib/pricing.js");
   const { MODEL_CREDIT_COST, ARTIST_REVENUE_SHARE, CREDIT_PACKAGES } = pricing;
 
@@ -86,11 +105,7 @@ async function main() {
 
   await prisma.artistEarning.deleteMany({});
   await prisma.entitlement.deleteMany({ where: { userId: buyer.id } });
-  await prisma.creditTransaction.deleteMany({ where: { userId: buyer.id } });
-  await prisma.user.update({
-    where: { id: buyer.id },
-    data: { creditBalance: 500 },
-  });
+  await setBalance(buyer.id, 500);
 
   // 2 — artist modeli: 60/40
   await purchaseModel({ userId: buyer.id, modelId: artistModel.id });
@@ -152,9 +167,7 @@ async function main() {
     () => ({ markOrderPaidAction: null }) as never,
   );
   const pkg = CREDIT_PACKAGES[0];
-  const balanceBefore = (
-    await prisma.user.findUniqueOrThrow({ where: { id: buyer.id } })
-  ).creditBalance;
+  const balanceBefore = await getValidBalance(buyer.id);
 
   const order = await prisma.creditOrder.create({
     data: {
@@ -187,6 +200,8 @@ async function main() {
           reason: "CREDIT_PACKAGE",
           balanceAfter: u.creditBalance,
           note: `Paket: ${o.packageId}`,
+          remaining: o.credits,
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         },
       });
     });
@@ -194,7 +209,7 @@ async function main() {
   void markOrderPaidAction;
 
   await markPaid(order.id);
-  const afterPaid = await prisma.user.findUniqueOrThrow({ where: { id: buyer.id } });
+  const afterPaid = { creditBalance: await getValidBalance(buyer.id) };
   check(
     "Sifariş təsdiqlənəndə Credit köçürülür",
     afterPaid.creditBalance === balanceBefore + pkg.credits,
@@ -212,11 +227,106 @@ async function main() {
 
   // 7 — təkrar təsdiq
   await markPaid(order.id);
-  const afterDouble = await prisma.user.findUniqueOrThrow({ where: { id: buyer.id } });
+  const afterDouble = { creditBalance: await getValidBalance(buyer.id) };
   check(
     "Təkrar təsdiq Credit-i ikinci dəfə vermir",
     afterDouble.creditBalance === afterPaid.creditBalance,
   );
+
+  // 8 — Credit müddəti
+  await prisma.entitlement.deleteMany({ where: { userId: buyer.id } });
+  await prisma.creditTransaction.deleteMany({ where: { userId: buyer.id } });
+
+  // Biri müddəti bitmiş, biri etibarlı iki lot
+  await prisma.creditTransaction.create({
+    data: {
+      userId: buyer.id,
+      amount: 100,
+      reason: "CREDIT_PACKAGE",
+      balanceAfter: 100,
+      remaining: 100,
+      expiresAt: new Date(Date.now() - 60_000), // artıq yanıb
+    },
+  });
+  await prisma.creditTransaction.create({
+    data: {
+      userId: buyer.id,
+      amount: 30,
+      reason: "CREDIT_PACKAGE",
+      balanceAfter: 130,
+      remaining: 30,
+      expiresAt: new Date(Date.now() + 10 * 24 * 3600_000),
+    },
+  });
+
+  const validOnly = await getValidBalance(buyer.id);
+  check(
+    "Müddəti bitmiş Credit balansa daxil edilmir",
+    validOnly === 30,
+    `(gözlənilən 30, alınan ${validOnly})`,
+  );
+
+  // Müddəti ən tez bitən lotdan xərclənməlidir
+  await prisma.creditTransaction.deleteMany({ where: { userId: buyer.id } });
+  const soon = await prisma.creditTransaction.create({
+    data: {
+      userId: buyer.id,
+      amount: 15,
+      reason: "CREDIT_PACKAGE",
+      balanceAfter: 15,
+      remaining: 15,
+      expiresAt: new Date(Date.now() + 2 * 24 * 3600_000), // tez bitir
+    },
+  });
+  const later = await prisma.creditTransaction.create({
+    data: {
+      userId: buyer.id,
+      amount: 50,
+      reason: "CREDIT_PACKAGE",
+      balanceAfter: 65,
+      remaining: 50,
+      expiresAt: new Date(Date.now() + 25 * 24 * 3600_000),
+    },
+  });
+
+  const spendModel = await prisma.model.findFirstOrThrow({
+    where: { status: "PUBLISHED", isOfficial: true },
+    select: { id: true },
+  });
+  await purchaseModel({ userId: buyer.id, modelId: spendModel.id });
+
+  const soonAfter = await prisma.creditTransaction.findUniqueOrThrow({
+    where: { id: soon.id },
+  });
+  const laterAfter = await prisma.creditTransaction.findUniqueOrThrow({
+    where: { id: later.id },
+  });
+  check(
+    "Xərcləmə müddəti ən tez bitən Credit-dən başlayır",
+    soonAfter.remaining === 5 && laterAfter.remaining === 50,
+    `(tez bitən: ${soonAfter.remaining}, gec bitən: ${laterAfter.remaining})`,
+  );
+
+  // Yalnız müddəti bitmiş Credit varsa, alış mümkün olmamalıdır
+  await prisma.entitlement.deleteMany({ where: { userId: buyer.id } });
+  await prisma.creditTransaction.deleteMany({ where: { userId: buyer.id } });
+  await prisma.creditTransaction.create({
+    data: {
+      userId: buyer.id,
+      amount: 500,
+      reason: "CREDIT_PACKAGE",
+      balanceAfter: 500,
+      remaining: 500,
+      expiresAt: new Date(Date.now() - 60_000),
+    },
+  });
+  let expiredRejected = false;
+  try {
+    await purchaseModel({ userId: buyer.id, modelId: spendModel.id });
+  } catch (e) {
+    expiredRejected = (e as { code?: string }).code === "INSUFFICIENT";
+  }
+  check("Müddəti bitmiş Credit ilə alış mümkün deyil", expiredRejected);
 
   console.log(`\nNəticə: ${passed} keçdi, ${failed} uğursuz\n`);
   if (failed > 0) process.exitCode = 1;

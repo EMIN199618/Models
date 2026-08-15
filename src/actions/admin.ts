@@ -6,6 +6,7 @@ import { z } from "zod";
 import { requireRole } from "@/lib/auth";
 import { grantCredits } from "@/lib/credits";
 import { prisma } from "@/lib/prisma";
+import { CREDIT_VALIDITY_DAYS } from "@/lib/pricing";
 
 /** Modeli təsdiqləyib kataloqa buraxır. */
 export async function approveModelAction(formData: FormData): Promise<void> {
@@ -132,6 +133,7 @@ export async function markOrderPaidAction(formData: FormData): Promise<void> {
       select: { creditBalance: true },
     });
 
+    // Yeni lot: Credit-lərin öz bitmə tarixi olur (bax pricing.ts).
     await tx.creditTransaction.create({
       data: {
         userId: order.userId,
@@ -139,6 +141,8 @@ export async function markOrderPaidAction(formData: FormData): Promise<void> {
         reason: "CREDIT_PACKAGE",
         balanceAfter: user.creditBalance,
         note: `Paket: ${order.packageId}`,
+        remaining: order.credits,
+        expiresAt: new Date(Date.now() + CREDIT_VALIDITY_DAYS * 24 * 60 * 60 * 1000),
       },
     });
   });

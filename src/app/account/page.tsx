@@ -6,7 +6,12 @@ import { cancelOrderAction } from "@/actions/orders";
 import { ReferralBox } from "@/components/ReferralBox";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { formatCredits, formatMinor, MODEL_CREDIT_COST } from "@/lib/pricing";
+import {
+  CREDIT_VALIDITY_DAYS,
+  formatCredits,
+  formatMinor,
+  MODEL_CREDIT_COST,
+} from "@/lib/pricing";
 
 export const metadata = { title: "Hesabım" };
 
@@ -57,6 +62,7 @@ export default async function AccountPage() {
         id: true,
         creditsSpent: true,
         createdAt: true,
+        expiresAt: true,
         model: { select: { id: true, slug: true, title: true, status: true } },
       },
     }),
@@ -94,7 +100,8 @@ export default async function AccountPage() {
             {formatCredits(user.creditBalance)}
           </p>
           <p className="mt-1 text-xs text-muted">
-            ≈ {Math.floor(user.creditBalance / MODEL_CREDIT_COST)} model
+            ≈ {Math.floor(user.creditBalance / MODEL_CREDIT_COST)} model ·{" "}
+            {CREDIT_VALIDITY_DAYS} gün etibarlı
           </p>
         </div>
         <div className="card p-5">
@@ -153,7 +160,7 @@ export default async function AccountPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Modellərim</h2>
+        <h2 className="mb-3 text-lg font-semibold">Aldığım modellər</h2>
         {entitlements.length === 0 ? (
           <div className="card p-8 text-center">
             <p className="text-sm text-muted">Hələ model əldə etməmisiniz.</p>
@@ -173,16 +180,24 @@ export default async function AccountPage() {
                     {e.model.title}
                   </Link>
                   <p className="text-xs text-muted">
-                    {e.creditsSpent} Credit ·{" "}
-                    {e.createdAt.toLocaleDateString("az-AZ")}
+                    {e.creditsSpent} Credit · {e.createdAt.toLocaleDateString("az-AZ")}
+                    {e.expiresAt > new Date() ? (
+                      <span className="text-success"> · endirmə açıqdır</span>
+                    ) : (
+                      <span> · endirmə müddəti bitib</span>
+                    )}
                   </p>
                 </div>
-                {e.model.status === "PUBLISHED" ? (
+                {e.model.status !== "PUBLISHED" ? (
+                  <span className="text-xs text-muted">Əlçatan deyil</span>
+                ) : e.expiresAt > new Date() ? (
                   <a href={`/api/download/${e.model.id}`} className="btn-ghost text-xs">
                     Endir
                   </a>
                 ) : (
-                  <span className="text-xs text-muted">Əlçatan deyil</span>
+                  <Link href={`/models/${e.model.slug}`} className="btn-ghost text-xs">
+                    Yenidən al
+                  </Link>
                 )}
               </div>
             ))}
