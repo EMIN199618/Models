@@ -13,7 +13,8 @@
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:reset": "prisma migrate reset --force && npm run seed",
-    "pricing": "tsx scripts/pricing-check.ts"
+    "pricing": "tsx scripts/pricing-check.ts",
+    "import": "tsx scripts/import-models.ts"
   },
   "dependencies": {
     "@google/model-viewer": "^4.3.1",

@@ -76,6 +76,55 @@ PostgreSQL-i özünüz qurun, `.env.example`-ı `.env` kimi kopyalayıb
 `DATABASE_URL`-i öz bazanıza yönəldin, sonra yenə `npm run setup` işlədin —
 skript Docker olmadığını görüb mövcud bazadan istifadə edəcək.
 
+## Modellərin toplu yüklənməsi
+
+Yüzlərlə modeli bir əmrlə kataloqa yükləmək üçün:
+
+```bash
+npm run import -- --dir ./import --author admin@arxvia.az --dry-run   # əvvəlcə yoxla
+npm run import -- --dir ./import --author admin@arxvia.az             # moderasiyaya göndər
+npm run import -- --dir ./import --author admin@arxvia.az --publish   # dərhal dərc et
+```
+
+> Yalnız hüququ sizdə olan modelləri yükləyin — sifarişlə hazırlatdığınız,
+> istehsalçıdan aldığınız və ya açıq lisenziyalı (CC0) fayllar.
+
+### Qovluq quruluşu
+
+```
+import/
+  divan/                        ← kateqoriya slug-ı (avtomatik tanınır)
+    modern-boz-divan/           ← model qovluğu (ad başlığa çevrilir)
+      model.zip                 ← mənbə fayl (məcburi)
+      preview.glb               ← 3D önizləmə (istəyə bağlı)
+      01.jpg  02.jpg            ← render şəkilləri (ən azı 1 — məcburi)
+      meta.json                 ← metadata (istəyə bağlı)
+```
+
+`meta.json` yazılmasa, başlıq qovluq adından, kateqoriya isə valideyn
+qovluqdan götürülür.
+
+```json
+{
+  "title": "Modern boz divan",
+  "description": "…",
+  "renderer": "CORONA",
+  "formats": ["max", "fbx"],
+  "maxVersion": "2021",
+  "polyCount": 120000,
+  "hasTextures": true,
+  "isPbr": true,
+  "tags": ["divan", "modern"],
+  "official": true
+}
+```
+
+Alət:
+- Mənbə faylı **qorunan** storage-a, önizləmələri açıq qovluğa yazır
+- Şəkilləri 1600px-ə qədər kiçildib JPEG-ə çevirir
+- Təkrar işlədiləndə mövcud modelləri **yenidən yaratmır** (idempotent)
+- Şəkli olmayan qovluğu buraxır və səbəbini yazır
+
 ### Faydalı əmrlər
 
 | Əmr | Nə edir |
@@ -84,7 +133,9 @@ skript Docker olmadığını görüb mövcud bazadan istifadə edəcək.
 | `npm run db:up` / `db:down` | Bazanı qaldırır / dayandırır |
 | `npm run db:reset` | Bazanı sıfırlayıb nümunə məlumatı yenidən yükləyir |
 | `npm run seed` | Yalnız nümunə məlumatı yenidən yükləyir |
+| `npm run import -- --dir <qovluq> --author <e-poçt>` | Modelləri toplu yükləyir |
 | `npm run e2e` | Alış/endirmə testlərini işlədir (sayt açıq olmalıdır) |
+| `npm run pricing` | Qiymət və gəlir bölgüsü testlərini işlədir |
 | `npm run build` | İstehsal üçün build |
 
 ### Test hesabları
@@ -93,7 +144,7 @@ skript Docker olmadığını görüb mövcud bazadan istifadə edəcək.
 |---|---|---|---|
 | Admin | `admin@arxvia.az` | `parol1234` | Moderasiya, Credit vermə |
 | Artist | `artist1@arxvia.az` | `parol1234` | Model yükləmə |
-| Alıcı | `dizayner@example.com` | `parol1234` | 25 Credit ilə |
+| Alıcı | `dizayner@example.com` | `parol1234` | 150 Credit ilə |
 
 ---
 
@@ -179,11 +230,14 @@ praktik riskdir.
 
 ```
 prisma/
-  schema.prisma        13 cədvəllik data modeli
+  schema.prisma        15 cədvəllik data modeli
   seed.ts              nümunə məlumat
   fixtures.ts          .glb və .zip generatorları (xarici asılılıqsız)
 scripts/
+  setup.mjs            bir əmrlə quraşdırma
+  import-models.ts     modellərin toplu yüklənməsi
   e2e-check.ts         alış/endirmə axınının testi
+  pricing-check.ts     qiymət və 60/40 bölgüsünün testi
 src/
   lib/
     prisma.ts          Prisma client (driver adapter ilə)
