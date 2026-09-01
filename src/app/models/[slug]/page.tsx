@@ -2,8 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { deleteReviewAction } from "@/actions/reviews";
 import { ModelViewer } from "@/components/ModelViewer";
 import { PurchaseBox } from "@/components/PurchaseBox";
+import { ReviewForm } from "@/components/ReviewForm";
+import { ReviewStars } from "@/components/ReviewStars";
 import { formatPolys } from "@/components/ModelCard";
 import { getCurrentUser } from "@/lib/auth";
 import { hasEntitlement } from "@/lib/credits";
@@ -37,6 +40,8 @@ async function getModel(slug: string) {
       fileSizeBytes: true,
       downloadCount: true,
       viewCount: true,
+      ratingAvg: true,
+      ratingCount: true,
       publishedAt: true,
       isOfficial: true,
       author: { select: { name: true, slug: true, bio: true } },
@@ -76,6 +81,31 @@ export default async function ModelDetailPage({
     where: { id: model.id },
     data: { viewCount: { increment: 1 } },
   });
+
+  const [reviews, ownEntitlement, ownReview] = await Promise.all([
+    prisma.review.findMany({
+      where: { modelId: model.id },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+      select: {
+        id: true,
+        rating: true,
+        comment: true,
+        createdAt: true,
+        user: { select: { name: true } },
+      },
+    }),
+    // Rəy yazmaq üçün bir dəfə əldə etmək kifayətdir — müddəti bitmiş olsa belə.
+    user
+      ? prisma.entitlement.findFirst({ where: { userId: user.id, modelId: model.id }, select: { id: true } })
+      : null,
+    user
+      ? prisma.review.findUnique({
+          where: { userId_modelId: { userId: user.id, modelId: model.id } },
+          select: { id: true, rating: true, comment: true },
+        })
+      : null,
+  ]);
 
   const previewGlb = model.assets.find((a) => a.kind === "PREVIEW_GLB");
   const images = model.assets.filter((a) => a.kind === "IMAGE");
@@ -136,12 +166,62 @@ export default async function ModelDetailPage({
             ))}
           </div>
         )}
+
+        <section className="space-y-3">
+          <h2 className="text-sm font-semibold text-muted">
+            Rəylər {model.ratingCount > 0 && `(${model.ratingCount})`}
+          </h2>
+
+          {ownEntitlement && (
+            <ReviewForm slug={model.slug} initial={ownReview ?? undefined} />
+          )}
+
+          {reviews.length === 0 ? (
+            <p className="text-sm text-muted">Hələ rəy yazılmayıb.</p>
+          ) : (
+            <div className="card divide-y divide-border">
+              {reviews.map((r) => (
+                <div key={r.id} className="space-y-1 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <ReviewStars rating={r.rating} />
+                      <span className="text-sm font-medium">{r.user.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted">
+                        {r.createdAt.toLocaleDateString("az-AZ")}
+                      </span>
+                      {ownReview?.id === r.id && (
+                        <form action={deleteReviewAction}>
+                          <input type="hidden" name="slug" value={model.slug} />
+                          <button type="submit" className="text-xs text-muted hover:text-danger">
+                            Sil
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  </div>
+                  {r.comment && <p className="text-sm leading-relaxed">{r.comment}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
 
       {/* Sağ sütun — alış və texniki məlumat */}
       <div className="space-y-4">
         <div>
           <h1 className="text-2xl font-semibold leading-tight">{model.title}</h1>
+          {model.ratingCount > 0 && (
+            <div className="mt-1.5 flex items-center gap-1.5 text-sm">
+              <ReviewStars rating={model.ratingAvg} size="md" />
+              <span className="font-medium">{model.ratingAvg.toFixed(1)}</span>
+              <span className="text-muted">
+                ({model.ratingCount} rəy)
+              </span>
+            </div>
+          )}
           {model.isOfficial ? (
             <p className="mt-1 text-sm text-accent">Arxvia rəsmi kolleksiyası</p>
           ) : model.author.slug ? (

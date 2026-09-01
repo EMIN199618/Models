@@ -336,6 +336,7 @@ async function main() {
 
   // Təmiz başlanğıc
   await prisma.$transaction([
+    prisma.review.deleteMany(),
     prisma.downloadLog.deleteMany(),
     prisma.creditTransaction.deleteMany(),
     prisma.entitlement.deleteMany(),
@@ -447,6 +448,9 @@ async function main() {
   // Kataloq boş görünməsin deyə hər alt kateqoriyaya nümunə modellər.
   const allModels = [...MODELS, ...generateFillerModels()];
 
+  // Rəy nümunələri üçün detallı modellərin id-ləri (aşağıda istifadə olunur).
+  const detailedModels: { id: string; authorId: string }[] = [];
+
   for (const [index, m] of allModels.entries()) {
     const category = await prisma.category.findUnique({ where: { slug: m.category } });
     const author = authors[m.artist];
@@ -544,11 +548,56 @@ async function main() {
       await prisma.modelTag.create({ data: { modelId: model.id, tagId: tag.id } });
     }
 
-    if (index < MODELS.length) console.log(`  model: ${m.title}`);
-    else if (index === MODELS.length) {
+    if (index < MODELS.length) {
+      console.log(`  model: ${m.title}`);
+      detailedModels.push({ id: model.id, authorId: author.id });
+    } else if (index === MODELS.length) {
       console.log(`  + ${allModels.length - MODELS.length} nümunə model generasiya olunur…`);
     }
   }
+
+  // --- nümunə rəylər (mağazanın canlı görünməsi üçün) ---
+  const reviewers = [buyer, artists[0], artists[1]];
+  const sampleComments = [
+    { rating: 5, comment: "Teksturalar çox keyfiyyətlidir, sənədə birbaşa import oldu." },
+    { rating: 4, comment: "Poliqon sayı gözlədiyimdən bir az yüksək idi, amma nəticə əladır." },
+    { rating: 5, comment: "Corona materialları hazır qurulub, vaxta qənaət etdi." },
+    { rating: 3, comment: "Fikirdə yaxşıdır, amma UV-lər bəzi hissədə üst-üstə düşür." },
+    { rating: 5, comment: "Referans şəkillərlə tam üst-üstə düşür, tövsiyə edirəm." },
+  ];
+
+  for (const [i, target] of detailedModels.slice(0, 5).entries()) {
+    // Müəllif öz modelinə rəy yazmır — real alıcı təcrübəsini əks etdirir.
+    const candidates = reviewers.filter((u) => u.id !== target.authorId);
+    const pool = candidates.slice(0, i === 0 ? 3 : (i % 2) + 1);
+
+    // Alışsız rəy mümkün olmadığı üçün əvvəlcə hüquq yaradılır.
+    for (const user of pool) {
+      await prisma.entitlement.create({
+        data: {
+          userId: user.id,
+          modelId: target.id,
+          creditsSpent: MODEL_CREDIT_COST,
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        },
+      });
+      const sample = sampleComments[(i + reviewers.indexOf(user)) % sampleComments.length];
+      await prisma.review.create({
+        data: { userId: user.id, modelId: target.id, rating: sample.rating, comment: sample.comment },
+      });
+    }
+
+    const agg = await prisma.review.aggregate({
+      where: { modelId: target.id },
+      _avg: { rating: true },
+      _count: { _all: true },
+    });
+    await prisma.model.update({
+      where: { id: target.id },
+      data: { ratingAvg: agg._avg.rating ?? 0, ratingCount: agg._count._all },
+    });
+  }
+  console.log("  nümunə rəylər əlavə olundu");
 
   // --- moderasiya növbəsində bir model (admin panelini yoxlamaq üçün) ---
   const pendingZip = makeZip("OXU-MENI.txt", "Moderasiya gözləyən nümunə model.");

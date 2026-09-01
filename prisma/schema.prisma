@@ -109,6 +109,7 @@ model User {
   reviewedModel Model[]             @relation("Reviewer")
   creditOrders  CreditOrder[]
   earnings      ArtistEarning[]     @relation("ArtistEarnings")
+  reviews       Review[]
 
   @@index([role])
 }
@@ -205,6 +206,11 @@ model Model {
   viewCount     Int @default(0)
   downloadCount Int @default(0)
 
+  /// Reytinq xülasəsi — həqiqi mənbə Review cədvəlidir, bu sahələr sürət üçün
+  /// saxlanılır və hər Review yaradılanda/dəyişəndə/silinəndə yenidən hesablanır.
+  ratingAvg   Float @default(0)
+  ratingCount Int   @default(0)
+
   // Moderasiya
   publishedAt     DateTime?
   reviewedAt      DateTime?
@@ -223,6 +229,7 @@ model Model {
   favorites    Favorite[]
   reports      Report[]
   earnings     ArtistEarning[]
+  reviews      Review[]
 
   @@index([status, publishedAt])
   @@index([categoryId, status])
@@ -381,6 +388,26 @@ model Favorite {
 
   @@id([userId, modelId])
   @@index([modelId])
+}
+
+/// Alıcının modelə verdiyi ulduz reytinqi + rəy.
+///
+/// Yalnız modeli əldə etmiş (Entitlement-i olan) istifadəçi rəy yaza bilər —
+/// bax src/actions/reviews.ts. Bir istifadəçi bir model üçün yalnız bir rəy
+/// yaza bilər, yenidən göndərəndə mövcud rəy yenilənir.
+model Review {
+  id        String   @id @default(cuid())
+  modelId   String
+  model     Model    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int // 1–5
+  comment   String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, modelId])
+  @@index([modelId, createdAt])
 }
 
 /// Müəllif hüququ / keyfiyyət şikayəti.

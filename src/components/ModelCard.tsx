@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { FavoriteButton } from "@/components/FavoriteButton";
+import { ReviewStars } from "@/components/ReviewStars";
 
 export type ModelCardData = {
   slug: string;
@@ -11,6 +12,8 @@ export type ModelCardData = {
   formats: string[];
   polyCount: number | null;
   downloadCount: number;
+  ratingAvg: number;
+  ratingCount: number;
   isOfficial: boolean;
   thumbnailUrl: string | null;
   author: { name: string; slug: string | null } | null;
@@ -91,16 +94,24 @@ export function ModelCard({ model }: { model: ModelCardData }) {
         >
           {model.title}
         </Link>
-        {!model.isOfficial && model.author?.slug ? (
-          <Link
-            href={`/artist/${model.author.slug}`}
-            className="block truncate text-[11px] text-muted hover:text-accent"
-          >
-            {model.author.name}
-          </Link>
-        ) : (
-          <span className="block truncate text-[11px] text-muted">Arxvia</span>
-        )}
+        <div className="flex items-center justify-between gap-2">
+          {!model.isOfficial && model.author?.slug ? (
+            <Link
+              href={`/artist/${model.author.slug}`}
+              className="truncate text-[11px] text-muted hover:text-accent"
+            >
+              {model.author.name}
+            </Link>
+          ) : (
+            <span className="truncate text-[11px] text-muted">Arxvia</span>
+          )}
+          {model.ratingCount > 0 && (
+            <span className="flex shrink-0 items-center gap-1 text-[11px] text-muted">
+              <ReviewStars rating={model.ratingAvg} />
+              {model.ratingAvg.toFixed(1)}
+            </span>
+          )}
+        </div>
       </div>
     </article>
   );

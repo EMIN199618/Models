@@ -23,6 +23,8 @@ async function getArtist(slug: string) {
           formats: true,
           polyCount: true,
           downloadCount: true,
+          ratingAvg: true,
+          ratingCount: true,
           isOfficial: true,
           author: { select: { name: true, slug: true } },
           assets: {
@@ -60,6 +62,8 @@ export default async function ArtistPage({
     formats: m.formats,
     polyCount: m.polyCount,
     downloadCount: m.downloadCount,
+    ratingAvg: m.ratingAvg,
+    ratingCount: m.ratingCount,
     isOfficial: m.isOfficial,
     thumbnailUrl: m.assets[0] ? `/uploads/${m.assets[0].storageKey}` : null,
     author: m.author,

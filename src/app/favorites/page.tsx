@@ -24,6 +24,8 @@ export default async function FavoritesPage() {
           formats: true,
           polyCount: true,
           downloadCount: true,
+          ratingAvg: true,
+          ratingCount: true,
           isOfficial: true,
           author: { select: { name: true, slug: true } },
           assets: {
@@ -45,6 +47,8 @@ export default async function FavoritesPage() {
     formats: model.formats,
     polyCount: model.polyCount,
     downloadCount: model.downloadCount,
+    ratingAvg: model.ratingAvg,
+    ratingCount: model.ratingCount,
     isOfficial: model.isOfficial,
     thumbnailUrl: model.assets[0] ? `/uploads/${model.assets[0].storageKey}` : null,
     author: model.author,
