@@ -66,6 +66,9 @@ class NewsItem(Base):
     external_id: Mapped[str | None] = mapped_column(String(64), index=True)
     author_handle: Mapped[str | None] = mapped_column(String(128))
     engagement: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    # [{"type": "image|video", "url", "thumb", "ocr_text", "transcript": [{"t": san, "text"}]}]
+    media: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
+    language: Mapped[str | None] = mapped_column(String(8))
 
     source: Mapped[Source] = relationship()
     analysis: Mapped["NewsAnalysis | None"] = relationship(back_populates="news", uselist=False)
@@ -87,6 +90,11 @@ class NewsAnalysis(Base):
     risk_status: Mapped[str] = mapped_column(String(16), default="auto")
     location: Mapped[str | None] = mapped_column(String(64), index=True)
     confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    # Relevance v2 sübutları
+    relevance_level: Mapped[str | None] = mapped_column(String(16))  # DIRECT | CONTEXTUAL | WEAK | NONE
+    matched_keywords: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    matched_entities: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    evidence: Mapped[list[str]] = mapped_column(JSONB, default=list)
     prompt_versions: Mapped[dict[str, str]] = mapped_column(JSONB, default=dict)
     model: Mapped[str] = mapped_column(String(64), default="")
     analyzed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -259,3 +267,91 @@ class Setting(Base):
     value: Mapped[dict[str, Any]] = mapped_column(JSONB)
     updated_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+# ---------------------------------------------------------------- DGK Structure & Management, açar sözlər
+class OrgUnit(Base):
+    __tablename__ = "org_units"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    slug: Mapped[str] = mapped_column(String(32), unique=True)
+    name: Mapped[str] = mapped_column(String(256))
+    kind: Mapped[str] = mapped_column(String(16))  # leadership | aparat | territorial | specialized
+    variants: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    source_url: Mapped[str | None] = mapped_column(String(512))
+    last_checked: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class Person(Base):
+    """Yalnız DGK-dakı xidməti vəzifə konteksti. Şəxsi həyat, reputasiya balı və profil saxlanılmır."""
+    __tablename__ = "persons"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    full_name: Mapped[str] = mapped_column(String(256), unique=True)  # "Soyad Ad Ata adı oğlu"
+    surname: Mapped[str] = mapped_column(String(64))
+    given_name: Mapped[str] = mapped_column(String(64))
+    patronymic: Mapped[str | None] = mapped_column(String(64))
+    # {"az": [...], "ascii": [...], "ru": [...], "en": [...], "tr": [...], "auto": true}
+    variants: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    last_checked: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Position(Base):
+    """Vəzifə tarixçəsi. Köhnə xəbərdə adı çəkilən şəxs həmin tarixdəki vəzifəsi ilə əlaqələndirilir."""
+    __tablename__ = "positions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    person_id: Mapped[int] = mapped_column(ForeignKey("persons.id", ondelete="CASCADE"), index=True)
+    unit_id: Mapped[int | None] = mapped_column(ForeignKey("org_units.id"), index=True)
+    title: Mapped[str] = mapped_column(String(256))
+    start_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    end_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(24))  # təsdiqlənmiş | yoxlanmalıdır | keçmiş rəhbər
+    source_url: Mapped[str | None] = mapped_column(String(512))
+    source_type: Mapped[str] = mapped_column(String(16))  # official | official_news | media | user
+    note: Mapped[str | None] = mapped_column(Text)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_checked: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    person: Mapped[Person] = relationship()
+    unit: Mapped[OrgUnit | None] = relationship()
+
+
+class Checkpoint(Base):
+    __tablename__ = "checkpoints"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(128), unique=True)
+    variants: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    unit_id: Mapped[int | None] = mapped_column(ForeignKey("org_units.id"))
+    unit_inferred: Mapped[bool] = mapped_column(Boolean, default=True)
+    source: Mapped[str | None] = mapped_column(String(512))
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    last_checked: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Keyword(Base):
+    """İdarə olunan açar söz lüğəti. L1 güclü, L2 kontekstual, L3 zəif (tək başına heç vaxt kifayət etmir)."""
+    __tablename__ = "keywords"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    term: Mapped[str] = mapped_column(String(256))
+    level: Mapped[str] = mapped_column(String(2), index=True)  # L1 | L2 | L3 | EX (istisna)
+    category: Mapped[str] = mapped_column(String(32))  # institution | structure | operation | digital | violation | foreign | noise
+    lang: Mapped[str] = mapped_column(String(8), default="az")
+    variants: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    builtin: Mapped[bool] = mapped_column(Boolean, default=False)
+    note: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class EntityMention(Base):
+    """Xəbərdə qurum strukturu / məntəqə / rəhbər adının DGK kontekstində çəkilməsi."""
+    __tablename__ = "entity_mentions"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    news_id: Mapped[int] = mapped_column(ForeignKey("news_items.id", ondelete="CASCADE"), index=True)
+    entity_type: Mapped[str] = mapped_column(String(16), index=True)  # unit | checkpoint | person
+    entity_id: Mapped[int] = mapped_column(Integer, index=True)
+    matched_text: Mapped[str] = mapped_column(String(256))
+    # person üçün: xəbər tarixində etibarlı vəzifə (köhnə xəbər hazırkı vəzifə ilə qarışdırılmır)
+    position_id: Mapped[int | None] = mapped_column(ForeignKey("positions.id", ondelete="SET NULL"))
+    context_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
+    snippet: Mapped[str | None] = mapped_column(Text)

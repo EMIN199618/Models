@@ -109,3 +109,32 @@ FASTAPI BACKEND  (app/api/main.py)
 - **Baza:** `app.db.drop_db()` yalnız MediaOS cədvəllərini silir. `prod` mühitində `seed --reset` qadağandır (assert).
 - **Konfiqurasiya:** `MEDIAOS_LLM_PROVIDER=local` real LLM-dən dərhal oflayn rejimə qaytarır. Redis söndürülsə belə sistem işləyir.
 - **Prompt:** hər prompt versiyalıdır. Versiya hər analizdə `news_analysis.prompt_versions` və `llm_calls` cədvəllərinə yazılır, ona görə hansı nəticənin hansı versiyadan gəldiyi izlənilir.
+
+
+## Genişlənmə (2026-11-18): Relevance v2, Structure & Management, Risk v2, multimodal
+
+```
+Xəbər / post / şərh (+ OCR mətni, + video transkripti)
+  → Keyword matching (keywords: L1/L2/L3/EX, AZ/RU/EN/TR, şəkilçi və diakritika toleransı)
+  → Entity recognition (org_units, checkpoints, persons + positions: xəbər tarixindəki vəzifə)
+  → Semantic relevance (LLM; lüğət siqnalları ipucu kimi ötürülür)
+  → Rule merge (xarici gömrük → rədd; LLM ilə lüğət razılaşmırsa → insan yoxlaması)
+  → Classification ‖ Sentiment → Risk v2 (none…critical; risk balı ≠ etibarlılıq) → Validation
+```
+
+| Yeni komponent | Fayl |
+|---|---|
+| Lüğət mühərriki, transliterasiya, dil təyini | `app/intel/lexicon.py` |
+| Reyestr yükləyicisi (yalnız əlavə edir, heç nəyi silmir) | `app/intel/registry.py`, `data/dgk_registry.json` |
+| OCR, transkript axtarışı, SSRF-dən qorunan yükləmə | `app/intel/media.py` |
+| Structure və açar söz API-si | `app/api/structure.py` |
+| Miqrasiya 003 | `news_analysis`: `relevance_level`, `matched_keywords`, `matched_entities`, `evidence`; `news_items`: `media`, `language`; yeni cədvəllər: `keywords`, `org_units`, `persons`, `positions`, `checkpoints`, `entity_mentions` |
+
+**Yeni endpoint-lər**
+- `GET /api/structure`
+- `GET /api/persons/{id}`
+- `GET /api/checkpoints`
+- `GET/POST /api/keywords`
+- `PATCH /api/keywords/{id}`
+- `GET /api/keywords/{id}/audit`
+- `POST /api/keywords/test`

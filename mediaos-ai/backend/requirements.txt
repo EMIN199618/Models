@@ -13,3 +13,5 @@ pytest==9.2.0
 redis==8.1.0
 SQLAlchemy==2.1.9
 uvicorn[standard]==0.54.0
+pytesseract==0.3.13
+pillow==13.0.0

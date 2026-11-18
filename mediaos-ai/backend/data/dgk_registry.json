@@ -1,0 +1,797 @@
+{
+ "_meta": {
+  "compiled_at": "2026-11-18",
+  "method": "customs.gov.az bu mühitdən birbaşa açılmır (TLS bağlantısı sayt tərəfindən kəsilir). Məlumatlar veb axtarış indeksindəki rəsmi customs.gov.az səhifələri və media xəbərləri əsasında toplanıb. 'təsdiqlənmiş' yalnız rəsmi şəxs səhifəsində vəzifə ilə göstərilən şəxslərə verilir; qalanları 'yoxlanmalıdır'.",
+  "status_values": [
+   "təsdiqlənmiş",
+   "yoxlanmalıdır",
+   "keçmiş rəhbər"
+  ],
+  "checkpoint_unit_note": "checkpoints[].unit coğrafi ehtimaldır (rəsmi mənbədə təsdiqlənməyib) — dashboard-da 'ehtimal' kimi göstərilir"
+ },
+ "units": [
+  {
+   "slug": "leadership",
+   "name": "Komitə rəhbərliyi",
+   "kind": "leadership",
+   "source": "https://customs.gov.az/az/komite/rehberlik"
+  },
+  {
+   "slug": "aparat",
+   "name": "Komitənin Aparatı",
+   "kind": "aparat",
+   "source": "https://customs.gov.az/az/komite/aparatin-strukturu"
+  },
+  {
+   "slug": "tarif",
+   "name": "Gömrük Tariflərinin Tənzimlənməsi və Ödənişlər Baş İdarəsi",
+   "kind": "aparat",
+   "source": "https://customs.gov.az/az/komite/aparatin-strukturu"
+  },
+  {
+   "slug": "risk",
+   "name": "Gömrük Risklərinin İdarəolunması və Audit Baş İdarəsi",
+   "kind": "aparat",
+   "source": "https://customs.gov.az/az/komite/aparatin-strukturu"
+  },
+  {
+   "slug": "maliyye",
+   "name": "Maliyyə və Satınalma İdarəsi",
+   "kind": "aparat",
+   "source": "https://customs.gov.az/az/komite/aparatin-strukturu"
+  },
+  {
+   "slug": "emeliyyat",
+   "name": "Əməliyyat və İstintaq Baş İdarəsi",
+   "kind": "aparat",
+   "source": "https://customs.gov.az/az/komite/aparatin-strukturu"
+  },
+  {
+   "slug": "mühafize",
+   "name": "Baş Gömrük Mühafizə Xidməti",
+   "kind": "aparat",
+   "source": "https://customs.gov.az/az/komite/aparatin-strukturu"
+  },
+  {
+   "slug": "kinoloji",
+   "name": "Kinoloji Mərkəz",
+   "kind": "aparat",
+   "source": "https://customs.gov.az/az/komite/aparatin-strukturu"
+  },
+  {
+   "slug": "tibb",
+   "name": "Tibb Xidməti İdarəsi",
+   "kind": "aparat",
+   "source": "https://customs.gov.az/az/komite/aparatin-strukturu"
+  },
+  {
+   "slug": "skm",
+   "name": "Sərhəd-Keçid Məntəqələri Baş İdarəsi",
+   "kind": "aparat",
+   "source": "https://customs.gov.az/az/komite/aparatin-strukturu"
+  },
+  {
+   "slug": "daxilolmalar",
+   "name": "Daxilolmalara Nəzarət Baş İdarəsi",
+   "kind": "aparat",
+   "source": "https://customs.gov.az/az/komite/aparatin-strukturu/man/daxilolmalar"
+  },
+  {
+   "slug": "cybersec",
+   "name": "Kibertəhlükəsizlik İdarəsi",
+   "kind": "aparat",
+   "source": "https://customs.gov.az/az/komite/aparatin-strukturu/man/cybersec"
+  },
+  {
+   "slug": "hr",
+   "name": "Kadrlar İdarəsi",
+   "kind": "aparat",
+   "source": "https://customs.gov.az/az/komite/aparatin-strukturu/man/hr"
+  },
+  {
+   "slug": "audit",
+   "name": "Gömrük Auditi İdarəsi",
+   "kind": "aparat",
+   "source": "https://customs.gov.az/az/komite/aparatin-strukturu/man/audit"
+  },
+  {
+   "slug": "secretariat",
+   "name": "Katiblik",
+   "kind": "aparat",
+   "source": "https://customs.gov.az/az/komite/aparatin-strukturu/man/secretariat"
+  },
+  {
+   "slug": "reqemsal",
+   "name": "Rəqəmsal İdarəetmə Baş İdarəsi",
+   "kind": "aparat",
+   "source": "user"
+  },
+  {
+   "slug": "siyaset",
+   "name": "Gömrük Siyasəti Baş İdarəsi",
+   "kind": "aparat",
+   "source": "user"
+  },
+  {
+   "slug": "baki",
+   "name": "Bakı Baş Gömrük İdarəsi",
+   "kind": "territorial",
+   "source": "https://customs.gov.az/uploads/site/1/30141f7be56bde4791218f0c41f08831.pdf"
+  },
+  {
+   "slug": "naxcivan",
+   "name": "Naxçıvan Baş Gömrük İdarəsi",
+   "kind": "territorial",
+   "source": "user"
+  },
+  {
+   "slug": "astara",
+   "name": "Astara Gömrük İdarəsi",
+   "kind": "territorial",
+   "source": "user"
+  },
+  {
+   "slug": "balaken",
+   "name": "Balakən Gömrük İdarəsi",
+   "kind": "territorial",
+   "source": "https://customs.gov.az/index.php/az/komite/gomruk-orqanlari/place/78_balaken-idare"
+  },
+  {
+   "slug": "bilesuvar",
+   "name": "Biləsuvar Gömrük İdarəsi",
+   "kind": "territorial",
+   "source": "https://customs.gov.az/az/komite/gomruk-orqanlari/place/68_bilesuvar-gomruk-idaresi"
+  },
+  {
+   "slug": "gence",
+   "name": "Gəncə Gömrük İdarəsi",
+   "kind": "territorial",
+   "source": "user"
+  },
+  {
+   "slug": "xacmaz",
+   "name": "Xaçmaz Gömrük İdarəsi",
+   "kind": "territorial",
+   "source": "https://customs.gov.az/uploads/site/1/30141f7be56bde4791218f0c41f08831.pdf"
+  },
+  {
+   "slug": "sumqayit",
+   "name": "Sumqayıt Gömrük İdarəsi",
+   "kind": "territorial",
+   "source": "https://customs.gov.az/uploads/site/1/30141f7be56bde4791218f0c41f08831.pdf"
+  },
+  {
+   "slug": "szengezur",
+   "name": "Şərqi Zəngəzur Gömrük İdarəsi",
+   "kind": "territorial",
+   "source": "https://customs.gov.az/az/komite/gomruk-orqanlari/place/60_szengezur_idare"
+  },
+  {
+   "slug": "tovuz",
+   "name": "Tovuz Gömrük İdarəsi",
+   "kind": "territorial",
+   "source": "https://customs.gov.az/uploads/site/1/30141f7be56bde4791218f0c41f08831.pdf"
+  },
+  {
+   "slug": "hava",
+   "name": "Hava Nəqliyyatında Baş Gömrük İdarəsi",
+   "kind": "specialized",
+   "source": "https://customs.gov.az/az/komite/gomruk-orqanlari/place/4_air-transport-head-customs-department1"
+  },
+  {
+   "slug": "deniz",
+   "name": "Dəniz Nəqliyyatı və Enerji Resursları Baş Gömrük İdarəsi",
+   "kind": "specialized",
+   "source": "user"
+  },
+  {
+   "slug": "aksiz",
+   "name": "Aksizli Mallar üzrə Baş Gömrük İdarəsi",
+   "kind": "specialized",
+   "source": "user"
+  },
+  {
+   "slug": "aiz",
+   "name": "Azad və Xüsusi İqtisadi Zonalar üzrə Gömrük İdarəsi",
+   "kind": "specialized",
+   "source": "user"
+  }
+ ],
+ "people": [
+  {
+   "name": "Bağırov Şahin Soltan oğlu",
+   "positions": [
+    {
+     "unit": "leadership",
+     "title": "Komitə sədri",
+     "start": "2023-02-14",
+     "status": "təsdiqlənmiş",
+     "source": "https://customs.gov.az/az/komite/rehberlik",
+     "source_type": "official",
+     "note": "Prezident sərəncamı 14.02.2023 (rəsmi bioqrafiya)"
+    }
+   ]
+  },
+  {
+   "name": "Quliyev Bəhruz Faiq oğlu",
+   "positions": [
+    {
+     "unit": "hava",
+     "title": "Hava Nəqliyyatında Baş Gömrük İdarəsinin rəisi",
+     "start": null,
+     "end": "2022-08-02",
+     "status": "keçmiş rəhbər",
+     "source": "https://customs.gov.az/az/komite/rehberlik/man/bahruz_quliyev",
+     "source_type": "official",
+     "note": "2018-ci ildə bu vəzifədə qeyd olunur; dəqiq başlama tarixi mənbədə yoxdur"
+    },
+    {
+     "unit": "leadership",
+     "title": "Sədr müavini",
+     "start": "2022-08-02",
+     "end": "2023-07-12",
+     "status": "keçmiş rəhbər",
+     "source": "https://customs.gov.az/az/komite/rehberlik/man/bahruz_quliyev",
+     "source_type": "official"
+    },
+    {
+     "unit": "leadership",
+     "title": "Sədrin birinci müavini",
+     "start": "2023-07-12",
+     "status": "təsdiqlənmiş",
+     "source": "https://customs.gov.az/az/komite/rehberlik/man/bahruz_quliyev",
+     "source_type": "official"
+    }
+   ]
+  },
+  {
+   "name": "Şirinov Natiq Telman oğlu",
+   "positions": [
+    {
+     "unit": "leadership",
+     "title": "Sədr müavini",
+     "start": null,
+     "status": "təsdiqlənmiş",
+     "source": "https://customs.gov.az/az/komite/rehberlik",
+     "source_type": "official",
+     "note": "Təyinat tarixi mənbədə göstərilməyib"
+    }
+   ]
+  },
+  {
+   "name": "Muradlı Güloğlan Babasən oğlu",
+   "positions": [
+    {
+     "unit": "leadership",
+     "title": "Sədr müavini",
+     "start": "2025-02-13",
+     "status": "təsdiqlənmiş",
+     "source": "https://customs.gov.az/az/komite/rehberlik",
+     "source_type": "official",
+     "note": "Prezident sərəncamı 13.02.2025"
+    }
+   ]
+  },
+  {
+   "name": "Məmmədov Fuad Elxan oğlu",
+   "positions": [
+    {
+     "unit": "leadership",
+     "title": "Sədr müavini",
+     "start": null,
+     "status": "təsdiqlənmiş",
+     "source": "https://customs.gov.az/az/komite/rehberlik",
+     "source_type": "official",
+     "note": "Təyinat tarixi mənbədə göstərilməyib"
+    }
+   ]
+  },
+  {
+   "name": "Əsədov Kənan Elmar oğlu",
+   "positions": [
+    {
+     "unit": "risk",
+     "title": "Risklərin İdarəolunması İdarəsinin rəisi",
+     "start": "2023-03-01",
+     "end": "2023-10-01",
+     "status": "keçmiş rəhbər",
+     "source": "https://customs.gov.az/az/komite/aparatin-strukturu/man/kenanasadov",
+     "source_type": "official",
+     "note": "Ay dəqiqliyi ilə"
+    },
+    {
+     "unit": "aparat",
+     "title": "Aparat rəhbərinin müavini",
+     "start": "2023-10-01",
+     "end": "2025-12-01",
+     "status": "keçmiş rəhbər",
+     "source": "https://customs.gov.az/az/komite/aparatin-strukturu/man/kenanasadov",
+     "source_type": "official",
+     "note": "Ay dəqiqliyi ilə"
+    },
+    {
+     "unit": "aparat",
+     "title": "Aparat rəhbəri",
+     "start": "2025-12-01",
+     "status": "təsdiqlənmiş",
+     "source": "https://customs.gov.az/az/komite/aparatin-strukturu/man/kenanasadov",
+     "source_type": "official",
+     "note": "2025-ci ilin dekabrı, sədrin əmri"
+    }
+   ]
+  },
+  {
+   "name": "Orucov Faiq Eldar oğlu",
+   "positions": [
+    {
+     "unit": "daxilolmalar",
+     "title": "Daxilolmalara Nəzarət Baş İdarəsinin rəisi",
+     "start": "2026-06-01",
+     "status": "təsdiqlənmiş",
+     "source": "https://customs.gov.az/az/komite/aparatin-strukturu/man/daxilolmalar",
+     "source_type": "official",
+     "note": "2026-cı ilin iyunu (ay dəqiqliyi)"
+    }
+   ]
+  },
+  {
+   "name": "Vəliyev Turqut",
+   "positions": [
+    {
+     "unit": "cybersec",
+     "title": "Kibertəhlükəsizlik İdarəsinin rəisi",
+     "start": "2026-06-01",
+     "status": "təsdiqlənmiş",
+     "source": "https://customs.gov.az/az/komite/aparatin-strukturu/man/cybersec",
+     "source_type": "official",
+     "note": "Ata adı axtarış nəticəsində görünmədi"
+    }
+   ]
+  },
+  {
+   "name": "Əsgərov Vüqar",
+   "positions": [
+    {
+     "unit": "hr",
+     "title": "Kadrlar İdarəsinin rəisi",
+     "start": "2023-08-14",
+     "status": "təsdiqlənmiş",
+     "source": "https://customs.gov.az/az/komite/aparatin-strukturu/man/hr",
+     "source_type": "official",
+     "note": "Ata adı axtarış nəticəsində görünmədi"
+    }
+   ]
+  },
+  {
+   "name": "Məmmədov Əlövsət",
+   "positions": [
+    {
+     "unit": "audit",
+     "title": "Gömrük Auditi İdarəsinin rəisi",
+     "start": "2023-11-01",
+     "status": "təsdiqlənmiş",
+     "source": "https://customs.gov.az/az/komite/aparatin-strukturu/man/audit",
+     "source_type": "official",
+     "note": "Ata adı axtarış nəticəsində görünmədi"
+    }
+   ]
+  },
+  {
+   "name": "Məmmədov Əsgər",
+   "positions": [
+    {
+     "unit": "secretariat",
+     "title": "Katibliyin rəisi",
+     "start": null,
+     "status": "yoxlanmalıdır",
+     "source": "https://customs.gov.az/az/komite/aparatin-strukturu/man/secretariat",
+     "source_type": "official",
+     "note": "Təyinat ili mənbələrdə 2022 və 2023 kimi fərqli göstərilir"
+    }
+   ]
+  },
+  {
+   "name": "Rəsulov Məsum Eynalı oğlu",
+   "positions": [
+    {
+     "unit": "emeliyyat",
+     "title": "Əməliyyat-İstintaq Baş İdarəsinin rəisi",
+     "start": null,
+     "status": "yoxlanmalıdır",
+     "source": "https://customs.gov.az/az/komite/aparatin-strukturu/man/8_mesum-resulov-eynali-oglu",
+     "source_type": "official",
+     "note": "Köhnə formatlı səhifə; Orxan Nuriyevin səhifəsi ilə ziddiyyət var"
+    }
+   ]
+  },
+  {
+   "name": "Nuriyev Orxan Eldar oğlu",
+   "positions": [
+    {
+     "unit": "emeliyyat",
+     "title": "Əməliyyat-İstintaq Baş İdarəsinin rəisi",
+     "start": "2023-04-11",
+     "status": "yoxlanmalıdır",
+     "source": "https://customs.gov.az/az/komite/aparatin-strukturu/man/inzibat",
+     "source_type": "official",
+     "note": "Səhifə ünvanı 'inzibat'dır, vəzifə başlığı ilə təyinat mətni uyğun gəlmir — hazırkı vəzifə dəqiqləşdirilməlidir"
+    }
+   ]
+  },
+  {
+   "name": "Əliyev Fərid Əlibaba oğlu",
+   "positions": [
+    {
+     "unit": "risk",
+     "title": "Gömrük Risklərinin İdarəolunması və Audit Baş İdarəsinin rəisi",
+     "start": "2018-01-01",
+     "status": "yoxlanmalıdır",
+     "source": "https://customs.gov.az/az/komite/aparatin-strukturu/man/17_eliyev-ferid-elibaba-oglu1",
+     "source_type": "official",
+     "note": "2018-ci il təyinatı; köhnə formatlı səhifə, hazırkı vəzifə yoxlanmalıdır"
+    }
+   ]
+  },
+  {
+   "name": "Məmmədov Ceyhun Yusuf oğlu",
+   "positions": [
+    {
+     "unit": "tibb",
+     "title": "Tibb Xidməti İdarəsinin rəisi",
+     "start": "2018-01-01",
+     "status": "yoxlanmalıdır",
+     "source": "https://customs.gov.az/az/komite/aparatin-strukturu/man/26_ceyhun-memmedov-yusuf-oglu",
+     "source_type": "official",
+     "note": "2018-ci il əmri; köhnə formatlı səhifə"
+    }
+   ]
+  },
+  {
+   "name": "Ramazanov Elmir",
+   "positions": [
+    {
+     "unit": "baki",
+     "title": "Bakı Baş Gömrük İdarəsinin rəis müavini",
+     "start": "2022-08-15",
+     "end": null,
+     "status": "keçmiş rəhbər",
+     "source": "https://modern.az/en/country/562925/who-are-the-customs-officers-granted-the-rank-of-general-by-the-president-file/",
+     "source_type": "media",
+     "note": "Rəis təyinatından əvvəlki vəzifə; bitmə tarixi məlum deyil"
+    },
+    {
+     "unit": "baki",
+     "title": "Bakı Baş Gömrük İdarəsinin rəisi",
+     "start": null,
+     "status": "yoxlanmalıdır",
+     "source": "https://report.az/infrastruktur/baki-bas-gomruk-idaresine-yeni-reis-teyin-olunub",
+     "source_type": "media",
+     "note": "İstifadəçi tərəfindən 2026 üçün təsdiqlənmiş kimi verilib; rəsmi səhifədə bu mühitdən yoxlanmayıb"
+    }
+   ]
+  },
+  {
+   "name": "Əliyev Vüqar İsmayıl oğlu",
+   "positions": [
+    {
+     "unit": "naxcivan",
+     "title": "Naxçıvan Baş Gömrük İdarəsinin rəisi",
+     "start": "2023-03-09",
+     "status": "yoxlanmalıdır",
+     "source": "https://525.az/news/216292-vuqar-eliyev-naxcivan-bas-gomruk-idaresinin-reisi-teyin-edilib",
+     "source_type": "media",
+     "note": "İstifadəçi tərəfindən verilib; DGK xəbəri (customs.gov.az/az/faydali/xeberler/4104) da bu vəzifəni göstərir, tarixsiz"
+    }
+   ]
+  },
+  {
+   "name": "Aslanov Fuad Mikayıl oğlu",
+   "positions": [
+    {
+     "unit": "siyaset",
+     "title": "Gömrük Siyasəti Baş İdarəsinin Ticarət Siyasəti İdarəsinin rəisi",
+     "start": "2023-01-01",
+     "end": "2024-12-31",
+     "status": "keçmiş rəhbər",
+     "source": "https://konkret.az/dgk-nin-general-mayor-rutbesi-almis-idare-reisleri-kimdir-dosye/",
+     "source_type": "media",
+     "note": "İl dəqiqliyi ilə"
+    },
+    {
+     "unit": "reqemsal",
+     "title": "Rəqəmsal İdarəetmə Baş İdarəsinin rəisi",
+     "start": null,
+     "status": "yoxlanmalıdır",
+     "source": "https://525.az/news/319524-dovlet-gomruk-komitesinin-dord-emekdasina-ali-xususi-rutbe-verilib",
+     "source_type": "media",
+     "note": "İstifadəçi tərəfindən verilib; 2026-cı ilin yanvar rütbə sərəncamında bu vəzifə ilə göstərilib"
+    }
+   ]
+  },
+  {
+   "name": "Namazov Rövşən Siyafiq oğlu",
+   "positions": [
+    {
+     "unit": "siyaset",
+     "title": "Gömrük Siyasəti Baş İdarəsinin rəisi",
+     "start": null,
+     "status": "yoxlanmalıdır",
+     "source": "https://www.ens.az/az/sahin-bagirov-yeni-idare-reisleri-teyin-etdi",
+     "source_type": "media",
+     "note": "İstifadəçi tərəfindən verilib; əvvəl həmin baş idarənin rəis müavini olub"
+    }
+   ]
+  },
+  {
+   "name": "Cahangirov Anar",
+   "positions": [
+    {
+     "unit": "hava",
+     "title": "Hava Nəqliyyatında Baş Gömrük İdarəsinin rəisi",
+     "start": null,
+     "status": "yoxlanmalıdır",
+     "source": "https://customs.gov.az/az/faydali/xeberler/4104",
+     "source_type": "official_news",
+     "note": "Tarixsiz DGK xəbəri"
+    }
+   ]
+  },
+  {
+   "name": "Həsənov Vəzir",
+   "positions": [
+    {
+     "unit": "aiz",
+     "title": "Azad və Xüsusi İqtisadi Zonalar üzrə Gömrük İdarəsinin rəisi",
+     "start": null,
+     "status": "yoxlanmalıdır",
+     "source": "https://customs.gov.az/uploads/site/1/30141f7be56bde4791218f0c41f08831.pdf",
+     "source_type": "official",
+     "note": "Təxminən 2024-cü ilə aid əlaqə siyahısı (PDF)"
+    }
+   ]
+  },
+  {
+   "name": "Mehdiyev Səfər",
+   "positions": [
+    {
+     "unit": "leadership",
+     "title": "Komitə sədri",
+     "start": null,
+     "end": "2023-02-14",
+     "status": "keçmiş rəhbər",
+     "source": "https://en.wikipedia.org/wiki/Safar_Mehdiyev",
+     "source_type": "media",
+     "note": "Keçmiş sədr; bitmə tarixi növbəti sədrin təyinatına görə"
+    }
+   ]
+  },
+  {
+   "name": "Qasımov Cavad",
+   "positions": [
+    {
+     "unit": "leadership",
+     "title": "Sədr müavini",
+     "start": null,
+     "end": null,
+     "status": "keçmiş rəhbər",
+     "source": "https://customs.gov.az/az/komite/rehberlik",
+     "source_type": "official_news",
+     "note": "Köhnə DGK xəbərlərində sədr müavini kimi; hazırkı rəhbərlik siyahısında yoxdur"
+    }
+   ]
+  },
+  {
+   "name": "Abdullayev Əsgər Həsən oğlu",
+   "positions": [
+    {
+     "unit": "leadership",
+     "title": "Sədr müavini",
+     "start": null,
+     "end": null,
+     "status": "keçmiş rəhbər",
+     "source": "https://customs.gov.az/az/muracietler/qebul-gunleri/man/4_abdullayev-esger-hesen-oglu1",
+     "source_type": "official",
+     "note": "Köhnə səhifə; hazırkı rəhbərlik siyahısında yoxdur"
+    }
+   ]
+  }
+ ],
+ "unresolved": [
+  {
+   "names": [
+    "Rəhimov Pərviz"
+   ],
+   "candidate_units": [
+    "xacmaz",
+    "sumqayit"
+   ],
+   "source": "https://customs.gov.az/uploads/site/1/30141f7be56bde4791218f0c41f08831.pdf",
+   "note": "PDF-də ad Xaçmaz və Sumqayıt sətirləri arasında qeyri-müəyyən yerləşib — bölməyə aid edilmədi"
+  },
+  {
+   "names": [
+    "Əbilov Firdovsi",
+    "Bayramov Tofiq"
+   ],
+   "candidate_units": [
+    "szengezur",
+    "tovuz"
+   ],
+   "source": "https://customs.gov.az/uploads/site/1/30141f7be56bde4791218f0c41f08831.pdf",
+   "note": "Hansı adın hansı idarəyə aid olduğu mənbədən aydın deyil — bölməyə aid edilmədi"
+  }
+ ],
+ "not_found": [
+  "astara",
+  "gence",
+  "sumqayit",
+  "deniz",
+  "aksiz",
+  "tarif",
+  "maliyye",
+  "skm",
+  "mühafize",
+  "kinoloji"
+ ],
+ "checkpoints": [
+  {
+   "name": "Astara",
+   "unit": "astara",
+   "variants": [
+    "Астара",
+    "Astara"
+   ],
+   "source": "user",
+   "unit_inferred": true
+  },
+  {
+   "name": "Cənub-Astara",
+   "unit": "astara",
+   "variants": [
+    "Cenub-Astara"
+   ],
+   "source": "user",
+   "unit_inferred": true
+  },
+  {
+   "name": "Biləsuvar",
+   "unit": "bilesuvar",
+   "variants": [
+    "Биласувар",
+    "Bilasuvar"
+   ],
+   "source": "user",
+   "unit_inferred": true
+  },
+  {
+   "name": "Samur",
+   "unit": "xacmaz",
+   "variants": [
+    "Самур"
+   ],
+   "source": "user",
+   "unit_inferred": true
+  },
+  {
+   "name": "Yalama",
+   "unit": "xacmaz",
+   "variants": [
+    "Ялама"
+   ],
+   "source": "user",
+   "unit_inferred": true
+  },
+  {
+   "name": "Şirvanlı",
+   "unit": null,
+   "variants": [
+    "Ширванлы",
+    "Shirvanli"
+   ],
+   "source": "user",
+   "unit_inferred": false
+  },
+  {
+   "name": "Qırmızı Körpü",
+   "unit": "tovuz",
+   "variants": [
+    "Красный мост",
+    "Qirmizi Korpu",
+    "Red Bridge"
+   ],
+   "source": "user",
+   "unit_inferred": true
+  },
+  {
+   "name": "Mazımqara",
+   "unit": "balaken",
+   "variants": [
+    "Мазымкара",
+    "Mazimqara"
+   ],
+   "source": "user",
+   "unit_inferred": true
+  },
+  {
+   "name": "Sınıq Körpü",
+   "unit": "tovuz",
+   "variants": [
+    "Сыных Кёрпю",
+    "Siniq Korpu"
+   ],
+   "source": "user",
+   "unit_inferred": true
+  },
+  {
+   "name": "Sədərək",
+   "unit": "naxcivan",
+   "variants": [
+    "Садарак",
+    "Sadarak"
+   ],
+   "source": "user",
+   "unit_inferred": true
+  },
+  {
+   "name": "Ağbənd",
+   "unit": "szengezur",
+   "variants": [
+    "Агбенд",
+    "Aghband",
+    "Agbend"
+   ],
+   "source": "user",
+   "unit_inferred": true
+  },
+  {
+   "name": "Balakən",
+   "unit": "balaken",
+   "variants": [
+    "Балакен",
+    "Balaken"
+   ],
+   "source": "existing",
+   "unit_inferred": true
+  },
+  {
+   "name": "Culfa",
+   "unit": "naxcivan",
+   "variants": [
+    "Джульфа",
+    "Julfa"
+   ],
+   "source": "existing",
+   "unit_inferred": true
+  },
+  {
+   "name": "Horadiz",
+   "unit": null,
+   "variants": [
+    "Горадиз"
+   ],
+   "source": "existing",
+   "unit_inferred": false
+  },
+  {
+   "name": "Heydər Əliyev Beynəlxalq Hava Limanı",
+   "unit": "hava",
+   "variants": [
+    "Heydar Aliyev International Airport",
+    "аэропорт Гейдар Алиев"
+   ],
+   "source": "existing",
+   "unit_inferred": true
+  },
+  {
+   "name": "Bakı Beynəlxalq Dəniz Ticarət Limanı",
+   "unit": "deniz",
+   "variants": [
+    "Bakı limanı",
+    "Ələt limanı",
+    "Baku port"
+   ],
+   "source": "existing",
+   "unit_inferred": true
+  }
+ ]
+}

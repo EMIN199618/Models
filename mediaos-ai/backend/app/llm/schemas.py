@@ -17,7 +17,7 @@ Category = Literal[
     "other",
 ]
 Sentiment = Literal["positive", "neutral", "negative"]
-RiskLevel = Literal["low", "medium", "high"]
+RiskLevel = Literal["none", "low", "medium", "high", "critical"]  # none = maddi risk aşkarlanmayıb
 
 
 class RelevanceOutput(BaseModel):
@@ -26,6 +26,12 @@ class RelevanceOutput(BaseModel):
     content_type: ContentType = Field(description="official — DGK-nin rəsmi açıqlaması; media — jurnalist materialı; public_opinion — vətəndaş şikayəti/rəyi")
     reason: str
     confidence: float = Field(ge=0, le=1)
+    # Relevance v2 — sübutlar (lüğət mühərriki doldurur; LLM də əlavə edə bilər)
+    relevance_level: str | None = Field(default=None, description="DIRECT | CONTEXTUAL | WEAK | NONE")
+    matched_keywords: list[str] = Field(default_factory=list)
+    matched_entities: list[str] = Field(default_factory=list)
+    evidence: list[str] = Field(default_factory=list)
+    responsibility: str | None = Field(default=None, description="DGK | other_agency_possible | unknown")
 
 
 class CategoryOutput(BaseModel):

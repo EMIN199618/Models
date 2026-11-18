@@ -33,6 +33,7 @@ from app.rag.ingest import ingest_documents
 from app.rag.retriever import PgVectorRetriever, rerank
 from app.security.auth import current_user, rate_limited, require_role
 from app.api.integrations import router as integrations_router
+from app.api.structure import router as structure_router
 
 log = logging.getLogger(__name__)
 
@@ -40,6 +41,9 @@ log = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
+    from app.intel.registry import seed_registry  # yalnız çatışmayanları əlavə edir
+    with session_scope() as db:
+        seed_registry(db)
     yield
 
 
@@ -47,6 +51,7 @@ app = FastAPI(title="MEDIA OS AI", version="2.0.0", description="DGK media monit
               lifespan=lifespan)
 FRONTEND = Path(__file__).resolve().parents[3] / "frontend"
 app.include_router(integrations_router)
+app.include_router(structure_router)
 _lat: dict[str, deque[float]] = defaultdict(lambda: deque(maxlen=2000))
 
 

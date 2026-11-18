@@ -101,29 +101,28 @@ def find_location(text: str) -> str | None:
 
 # ------------------------------------------------------------------ tapşırıqlar
 def relevance(title: str, body: str, source_kind: str) -> dict[str, Any]:
+    """Relevance v2: idarə olunan lüğət (L1/L2/L3), məntəqə və rəhbər kataloqu, xarici gömrük istisnası."""
+    from app.intel.lexicon import match
     t = normalize_az(f"{title} {body}")
-    strong, medium = _count(t, STRONG_DGK), _count(t, MEDIUM_DGK)
-    score = min(1.0, 0.45 * strong + 0.18 * medium)
-    loc = find_location(t)
-    if loc and medium:
-        score += 0.45  # Azərbaycan gömrük postunun adı + gömrük sözü = güclü siqnalla eyni çəki ("Astara gömrüyü")
-    reasons = []
-    if (FOREIGN_CUSTOMS.search(t) or FOREIGN_CUSTOMS.search(fold(t))) and not (AZ_CONTEXT.search(t) or AZ_CONTEXT.search(fold(t))):
-        score -= 0.6
-        reasons.append("xarici ölkənin gömrük orqanı haqqındadır")
-    if _count(t, NOISE):
-        score -= 0.4
-        reasons.append("mövzu gömrüklə əlaqəsizdir")
-    if source_kind == "official" and medium:
-        score += 0.15
-    score = max(0.0, min(1.0, score))
-    is_rel = score >= 0.5
-    if is_rel:
-        reasons.insert(0, f"DGK göstəriciləri: {strong} güclü, {medium} orta" + (f"; yer: {loc}" if loc else ""))
-    elif not reasons:
-        reasons.append("DGK-yə birbaşa istinad tapılmadı")
-    conf = round(min(0.95, 0.5 + abs(score - 0.5) * 1.2), 3)
-
+    m = match(title, body, source_kind)
+    score = m.score / 100
+    is_rel = m.decision == "PUBLISH"
+    # Etibarlılıq: hədlərdən (35/60) uzaqlıq; REVIEW zolağında aşağı → insan yoxlaması
+    # Etibarlılıq sübutun NÖVÜNDƏN asılıdır (bal ilə eyni şey deyil):
+    confirmed_cp = any(c["confirmed"] for c in m.checkpoints)
+    if m.foreign and m.level == "NONE":
+        conf = 0.85
+    elif m.level == "DIRECT":
+        conf = 0.9
+    elif m.level == "CONTEXTUAL" and m.decision == "PUBLISH" and (confirmed_cp or len(m.matched_keywords) >= 2):
+        conf = 0.75
+    elif m.level == "CONTEXTUAL" and m.decision == "PUBLISH":
+        conf = 0.65
+    elif m.decision == "REVIEW":
+        conf = 0.45  # yalnız semantik/zəif kontekst — insan yoxlaması
+    else:  # WEAK / NONE → əminliklə rədd
+        conf = 0.8
+    reasons = [f"{m.level}: bal {m.score}"] + m.reasons[:4]
     if source_kind == "official":
         ctype = "official"
     elif source_kind in ("complaint", "social") or re.search(
@@ -132,8 +131,9 @@ def relevance(title: str, body: str, source_kind: str) -> dict[str, Any]:
         ctype = "public_opinion"
     else:
         ctype = "media"
-    return {"is_relevant": is_rel, "score": round(score, 3), "content_type": ctype,
-            "reason": "; ".join(reasons), "confidence": conf}
+    return {"is_relevant": is_rel, "score": round(score, 3), "content_type": ctype, "reason": "; ".join(reasons),
+            "confidence": conf, "relevance_level": m.level, "matched_keywords": m.matched_keywords,
+            "matched_entities": m.matched_entities, "evidence": m.evidence[:6], "responsibility": m.responsibility}
 
 
 def category(title: str, body: str) -> dict[str, Any]:
@@ -244,15 +244,18 @@ def risk(title: str, body: str, content_type: str, sentiment_label: str, mention
         reasons.append("Rəsmi mənbə iddianı təkzib edir")
 
     severe = {"R1", "R2", "R4", "R5"} & set(criteria)
-    if content_type == "official" and not severe:
-        level, score = "low", 0.1
+    if severe and "R6" in criteria and (verified or len(severe) >= 2):
+        # Kritik: ağır meyar + geniş yayılma + (rəsmi təsdiq və ya bir neçə ağır meyar)
+        level, score = "critical", 0.95
     elif severe:
-        level, score = "high", min(1.0, 0.7 + 0.08 * len(criteria))
-    elif criteria:
+        level, score = "high", min(0.9, 0.7 + 0.05 * len(criteria))
+    elif criteria and content_type != "official":
         level, score = "medium", 0.45 + 0.05 * len(criteria)
+    elif sentiment_label == "negative" and content_type != "official":
+        level, score = "low", 0.2   # mənfi rəy, amma heç bir risk meyarı yoxdur
     else:
-        level, score = "low", 0.2 if sentiment_label == "negative" else 0.05
-    review = level == "high" or (level == "medium" and not verified)
+        level, score = "none", 0.0  # adi rəsmi məlumat, uğurlu əməliyyat, neytral/müsbət material
+    review = level in ("high", "critical") or (level == "medium" and not verified)
     conf = 0.8 if criteria else 0.7
     return {"risk_level": level, "score": round(score, 3), "criteria": criteria, "reasons": reasons,
             "evidence_ids": fc.get("evidence_ids", []), "claim_verified": verified,
@@ -310,7 +313,7 @@ def executive_summary(period: str, stats: str, items: str) -> dict[str, Any]:
             points.append({"text": f"{names[k]} ({len(v)}): " + "; ".join(x["title"] for x in top),
                            "citations": [x["id"] for x in top]})
     risks = [{"text": f"{r['title']} — risk: {r.get('risk')}" + (" (təsdiqlənməyib)" if r.get("verified") != "true" else ""),
-              "citations": [r["id"]]} for r in rows if r.get("risk") in ("high", "medium")][:5]
+              "citations": [r["id"]]} for r in rows if r.get("risk") in ("critical", "high", "medium")][:5]
     gaps = [f"{names[k]} üzrə məlumat yoxdur" for k in names if k not in by_type]
     return {"headline": headline, "key_points": points, "risks": risks, "data_gaps": gaps}
 
@@ -446,7 +449,7 @@ def compose_answer(question: str, results: list[dict[str, Any]]) -> str:
                     extra.append(_CT.get(it["content_type"], it["content_type"]))
                 if it.get("sentiment"):
                     extra.append(_SENT.get(it["sentiment"], it["sentiment"]))
-                if it.get("risk_level") and it["risk_level"] != "low":
+                if it.get("risk_level") and it["risk_level"] not in ("low", "none"):
                     extra.append(f"risk: {it['risk_level']}" + (" (insan təsdiqi gözlənilir)" if it.get("risk_status") == "pending_review" else ""))
                 if it.get("score") is not None and "ref" in it and it["ref"].startswith("S"):
                     extra.append(f"oxşarlıq {it['score']:.2f}")

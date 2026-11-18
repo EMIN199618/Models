@@ -55,12 +55,17 @@ def seed(reset: bool = False) -> dict:
         for username, name, role, token in DEV_USERS:
             if not db.scalar(select(User).where(User.username == username)):
                 db.add(User(username=username, display_name=name, role=role, api_token_hash=hash_token(token)))
+    from app.intel.lexicon import invalidate
+    from app.intel.registry import seed_registry
+    with session_scope() as db:
+        reg_stats = seed_registry(db)
+    invalidate()
     with session_scope() as db:
         doc_stats = ingest_documents(db, list(FrontMatterDirectoryLoader(SAMPLES / "docs").lazy_load()))
     with session_scope() as db:
         news = load_sample_news()
         st = process_batch(db, [n for _, n, _ in news])
-    return {"documents": doc_stats, "news": st.as_dict()}
+    return {"registry": reg_stats, "documents": doc_stats, "news": st.as_dict()}
 
 
 if __name__ == "__main__":

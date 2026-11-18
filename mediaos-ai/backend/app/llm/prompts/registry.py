@@ -52,7 +52,7 @@ class PromptSpec:
 
 
 RELEVANCE = PromptSpec(
-    name="dgk_relevance", version="1.2.0", task="relevance", schema=S.RelevanceOutput,
+    name="dgk_relevance", version="2.0.0", task="relevance", schema=S.RelevanceOutput,
     system=(
         "Sən Azərbaycan Respublikasının Dövlət Gömrük Komitəsi (DGK) üçün media monitorinqi təsnifatçısısan.\n"
         "Qərar ver: xəbər DGK-yə, onun struktur bölmələrinə, gömrük postlarına, əməkdaşlarına, xidmətlərinə "
@@ -60,9 +60,12 @@ RELEVANCE = PromptSpec(
         "AİD DEYİL: başqa ölkələrin gömrük orqanları (Azərbaycana toxunmursa), 'gömrük' sözünün məcazi işlənməsi, "
         "idman, hava, ümumi iqtisadiyyat xəbərləri.\n"
         "content_type: official — DGK-nin özünün açıqlaması/press-relizi; media — jurnalist materialı; "
-        "public_opinion — vətəndaş şikayəti, sosial şəbəkə rəyi."
+        "public_opinion — vətəndaş şikayəti, sosial şəbəkə rəyi.\n"
+        "Açar söz siqnalları lüğətdən gəlir və yalnız ipucudur: L3 (idxal, ixrac, ƏDV, tarif, sərhəd) tək başına kifayət deyil; "
+        "yer adı tək başına DGK demək deyil; eyniadlı şəxslər ola bilər. Pasport/viza nəzarəti Dövlət Sərhəd Xidmətinin "
+        "səlahiyyətidir. Əmin deyilsənsə confidence-i aşağı qoy (insan yoxlamasına gedir)."
     ),
-    human="Mənbə: {source_name} (növ: {source_kind})\nBaşlıq: {title}\n<source_text>\n{body}\n</source_text>",
+    human="Mənbə: {source_name} (növ: {source_kind})\nAçar söz siqnalları: {signals}\nBaşlıq: {title}\n<source_text>\n{body}\n</source_text>",
 )
 
 CATEGORY = PromptSpec(
@@ -86,13 +89,15 @@ SENTIMENT = PromptSpec(
 )
 
 RISK = PromptSpec(
-    name="risk_assessment", version="1.4.0", task="risk", schema=S.RiskOutput,
+    name="risk_assessment", version="2.0.0", task="risk", schema=S.RiskOutput,
     system=(
         "Sən DGK üçün reputasiya və əməliyyat riski analitikisən. YALNIZ aşağıdakı meyarlar əsasında qiymətləndir:\n"
         "R1 korrupsiya/rüşvət iddiası; R2 hüquq pozuntusu və ya qanunsuz hərəkət iddiası; "
         "R3 sistemli/kütləvi narazılıq (çoxsaylı şikayət, 'hamı', 'hər gün'); R4 təhlükəsizlik insidenti; "
         "R5 rəhbərliyə yönəlmiş ittiham; R6 geniş yayılma (çox mənbədə təkrar və ya sosial şəbəkədə viral — 'Yayılma' sətrində 'viral').\n"
-        "Sentiment risk deyil: tək bir mənfi rəy adətən low-dur. high üçün ən azı bir R1/R2/R4/R5 meyarı lazımdır.\n"
+        "Səviyyələr: none (maddi risk yoxdur — adi rəsmi məlumat, uğurlu əməliyyat), low, medium, high, critical.\n"
+        "Sentiment risk deyil: tək bir mənfi rəy adətən low-dur. high üçün ən azı bir R1/R2/R4/R5 meyarı lazımdır; "
+        "critical üçün ağır meyar + geniş yayılma (R6) + rəsmi təsdiq və ya bir neçə ağır meyar.\n"
         "Rəsmi sübutla təsdiqlənməyən iddia üçün claim_verified=false və requires_human_review=true qoy.\n"
         "evidence_ids yalnız <context> daxilindəki identifikatorlardan ola bilər."
     ),

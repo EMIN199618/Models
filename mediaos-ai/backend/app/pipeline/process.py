@@ -37,6 +37,18 @@ class RawNews:
     external_id: str | None = None
     author_handle: str | None = None
     engagement: dict[str, Any] = field(default_factory=dict)
+    media: list[dict[str, Any]] = field(default_factory=list)
+
+
+def analysis_text(raw: "RawNews", body: str) -> str:
+    """Şəkildəki (OCR) və videodakı (transkript) mətn analizə ayrıca, işarələnmiş blok kimi əlavə olunur."""
+    extra = []
+    for m in raw.media or []:
+        if m.get("ocr_text"):
+            extra.append(f"[Şəkildəki mətn (OCR): {m['ocr_text'][:800]}]")
+        for seg in (m.get("transcript") or [])[:200]:
+            extra.append(f"[Video {seg.get('t', 0):.0f}s: {seg.get('text', '')[:300]}]")
+    return body + ("\n" + "\n".join(extra) if extra else "")
 
 
 def reach_label(eng: dict[str, Any]) -> str:
@@ -107,9 +119,11 @@ def process_batch(db: Session, items: list[RawNews], index: bool = True) -> Pipe
         src = _source(db, raw.source_name, raw.source_kind)
         sh = simhash(f"{title} {body}")
         twin = _near_dup(db, sh)
-        # ---- Relevance filter (Chain 1)
+        # ---- Relevance filter (Chain 1): keyword → entity → semantic → qayda
+        body_full = analysis_text(raw, body)
         try:
-            dec = rel.invoke({"title": title, "body": body, "source_name": src.name, "source_kind": src.kind})
+            dec = rel.invoke({"title": title, "body": body_full, "source_name": src.name, "source_kind": src.kind,
+                              "published_at": pub})
         except Exception as exc:
             st.errors.append(f"relevance: {exc}")
             continue
@@ -121,28 +135,34 @@ def process_batch(db: Session, items: list[RawNews], index: bool = True) -> Pipe
         n = NewsItem(source_id=src.id, url=raw.url, title=title, body=body, published_at=pub, content_hash=h,
                      simhash=sh, status=status, content_type=r.content_type, dup_of_id=twin.id if twin else None,
                      is_synthetic=raw.is_synthetic, platform=raw.platform, external_id=raw.external_id,
-                     author_handle=raw.author_handle, engagement=raw.engagement or {})
+                     author_handle=raw.author_handle, engagement=raw.engagement or {}, media=raw.media or [],
+                     language=dec.lexicon.get("language"))
         db.add(n)
         db.flush()
-        a = NewsAnalysis(news_id=n.id, is_relevant=r.is_relevant, relevance_score=r.score, relevance_reason=r.reason,
-                         confidence=r.confidence, prompt_versions={"relevance": pv["dgk_relevance"]}, model=model)
+        a = NewsAnalysis(news_id=n.id, is_relevant=r.is_relevant, relevance_score=r.score,
+                         relevance_reason="; ".join([r.reason, *dec.rule_notes])[:2000],
+                         confidence=r.confidence, prompt_versions={"relevance": pv["dgk_relevance"]}, model=model,
+                         relevance_level=r.relevance_level, matched_keywords=r.matched_keywords,
+                         matched_entities=r.matched_entities, evidence=r.evidence)
         db.add(a)
+        _store_mentions(db, n.id, dec.lexicon)
         if status == "irrelevant":
             st.irrelevant += 1
             continue
         if status == "needs_review":
             st.review += 1
             db.add(ReviewItem(kind="relevance", news_id=n.id, payload={"reason": r.reason, "score": r.score,
-                                                                       "confidence": r.confidence}))
+                                                                       "confidence": r.confidence, "level": r.relevance_level,
+                                                                       "evidence": r.evidence, "rules": dec.rule_notes}))
         if status == "duplicate":
             continue
         # ---- Classification ‖ Sentiment (Chain 2)
-        c = cls.invoke({"title": title, "body": body, "content_type": r.content_type})
+        c = cls.invoke({"title": title, "body": body_full, "content_type": r.content_type})
         a.category, a.location = c.category.category, c.category.location
         a.sentiment, a.sentiment_score = c.sentiment.sentiment, c.sentiment.score
         # ---- Risk (Chain 3) — sentimentdən müstəqil meyarlarla
         mentions = 1 + (db.scalar(text("SELECT count(*) FROM news_items WHERE dup_of_id = :i"), {"i": n.id}) or 0)
-        ra = risk.invoke({"title": title, "body": body, "content_type": r.content_type,
+        ra = risk.invoke({"title": title, "body": body_full, "content_type": r.content_type, "source_kind": src.kind,
                           "sentiment": c.sentiment.sentiment, "mentions": mentions,
                           "reach": reach_label(raw.engagement)})
         a.risk_level, a.risk_score = ra.result.risk_level, ra.result.score
@@ -167,3 +187,21 @@ def process_batch(db: Session, items: list[RawNews], index: bool = True) -> Pipe
     for ns in ("dashboard", "latest_news", "search", "trends"):
         cache.invalidate(ns)
     return st
+
+
+def _store_mentions(db: Session, news_id: int, lex: dict[str, Any]) -> None:
+    """Struktur, məntəqə və rəhbər adlarının çəkilməsini saxlayır. Yalnız bazadakı (int id) varlıqlar."""
+    from app.models import EntityMention
+    for u in lex.get("units", []):
+        if isinstance(u["id"], int):
+            db.add(EntityMention(news_id=news_id, entity_type="unit", entity_id=u["id"], matched_text=u["name"],
+                                 context_confirmed=True))
+    for c in lex.get("checkpoints", []):
+        if isinstance(c["id"], int):
+            db.add(EntityMention(news_id=news_id, entity_type="checkpoint", entity_id=c["id"], matched_text=c["name"],
+                                 context_confirmed=c["confirmed"]))
+    for p in lex.get("persons", []):
+        if isinstance(p["id"], int):
+            pos = p.get("position") or {}
+            db.add(EntityMention(news_id=news_id, entity_type="person", entity_id=p["id"], matched_text=p["matched"][:256],
+                                 position_id=pos.get("id"), context_confirmed=p["confirmed"]))

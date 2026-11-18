@@ -88,8 +88,8 @@ def eval_classification(pipeline_seconds: float) -> dict:
             ct.append((g["content_type"], ctype))
             cat.append((g["category"], a.category))
             sent.append((g["sentiment"], a.sentiment))
-            risk.append((g["risk"], a.risk_level, gold[url]["key"]))
-    order = {"low": 0, "medium": 1, "high": 2}
+            risk.append((g["risk"], "low" if a.risk_level == "none" else a.risk_level, gold[url]["key"]))
+    order = {"none": 0, "low": 0, "medium": 1, "high": 2, "critical": 3}  # gold "low" = "none|low"
     risk_fp = [k for g, p, k in risk if order[p] > order[g]]
     risk_fn = [k for g, p, k in risk if order[p] < order[g]]
     high = prf(sum(g == "high" and p == "high" for g, p, _ in risk), sum(g != "high" and p == "high" for g, p, _ in risk),
@@ -124,11 +124,11 @@ def eval_holdout() -> dict:
     rel, cls, rsk = relevance_chain(), classification_chain(), risk_chain()
     tp = fp = fn = tn = 0
     ct, cat, sent, risk, errs = [], [], [], [], []
-    order = {"low": 0, "medium": 1, "high": 2}
+    order = {"none": 0, "low": 0, "medium": 1, "high": 2, "critical": 3}  # gold "low" = "none|low"
     for r in data:
         g = r["gold"]
         d = rel.invoke({k: r[k] for k in ("title", "body", "source_name", "source_kind")})
-        pred = d.decision != "reject"
+        pred = d.decision == "accept"
         tp += g["relevant"] and pred
         fn += g["relevant"] and not pred
         fp += (not g["relevant"]) and pred
@@ -143,9 +143,9 @@ def eval_holdout() -> dict:
         ct.append((g["content_type"], d.result.content_type))
         cat.append((g["category"], c.category.category))
         sent.append((g["sentiment"], c.sentiment.sentiment))
-        risk.append((g["risk"], k.result.risk_level, r["key"]))
+        risk.append((g["risk"], "low" if k.result.risk_level == "none" else k.result.risk_level, r["key"]))
         for name, gv, pv in (("content_type", g["content_type"], d.result.content_type), ("category", g["category"], c.category.category),
-                             ("sentiment", g["sentiment"], c.sentiment.sentiment), ("risk", g["risk"], k.result.risk_level)):
+                             ("sentiment", g["sentiment"], c.sentiment.sentiment), ("risk", g["risk"], "low" if k.result.risk_level == "none" else k.result.risk_level)):
             if gv != pv:
                 errs.append(f"{r['key']}: {name} {gv}->{pv}")
     return {

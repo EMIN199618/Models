@@ -88,3 +88,13 @@ code { background: var(--chip); padding: 1px 5px; border-radius: 4px; }
 .plat.tiktok, .plat.instagram { color: var(--accent); border-color: var(--accent); }
 .eng { display: block; color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
 td a { color: inherit; }
+
+.struct-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; }
+@media (max-width: 1000px) { .struct-grid { grid-template-columns: 1fr; } }
+.person-panel { border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-size: 13px; display: flex; flex-direction: column; gap: 8px; max-height: 620px; overflow-y: auto; }
+.st { display: inline-block; font-size: 11px; border-radius: 999px; padding: 0 8px; border: 1px solid currentColor; white-space: nowrap; }
+.st-ok { color: var(--pos); } .st-check { color: var(--med); } .st-past { color: var(--muted); }
+.lnk { color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; text-align: left; font: inherit; }
+.lnk:hover { text-decoration: underline; }
+.kindh td { background: var(--chip); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.r-none { color: var(--muted); } .r-critical { color: var(--neg); font-weight: 700; text-decoration: underline; }

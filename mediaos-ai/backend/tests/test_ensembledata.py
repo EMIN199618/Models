@@ -115,7 +115,7 @@ def test_full_pipeline_relevance_risk_and_virality(client):
         cm = rows["c18000000000000001"]
         assert cm.status == "relevant" and cm.content_type == "public_opinion" and cm.analysis.risk_level == "high"
         pos = rows["c18000000000000003"]
-        assert pos.analysis.sentiment == "positive" and pos.analysis.risk_level == "low"
+        assert pos.analysis.sentiment == "positive" and pos.analysis.risk_level == "none"
     # İkinci toplama eyni postları yenidən emal etmir
     res2 = run_collector(collector([]))
     assert res2["collector"]["new"] == 0

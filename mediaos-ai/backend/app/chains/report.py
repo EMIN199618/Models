@@ -59,7 +59,7 @@ def _stats(x: dict[str, Any]) -> dict[str, Any]:
         "by_type": dict(Counter(i["type"] for i in items)),
         "by_sentiment": dict(Counter(i["sentiment"] for i in items)),
         "by_category": dict(Counter(i["category"] for i in items).most_common(5)),
-        "risk_high": sum(i["risk"] == "high" for i in items),
+        "risk_high": sum(i["risk"] in ("high", "critical") for i in items),
         "risk_medium": sum(i["risk"] == "medium" for i in items),
         "removed_duplicates": x.get("removed_duplicates", 0),
     }
@@ -67,7 +67,7 @@ def _stats(x: dict[str, Any]) -> dict[str, Any]:
 
 def _items_text(x: dict[str, Any]) -> str:
     order = {"official": 0, "media": 1, "public_opinion": 2}
-    items = sorted(x["items"], key=lambda i: (order.get(i["type"], 3), {"high": 0, "medium": 1}.get(i["risk"], 2)))
+    items = sorted(x["items"], key=lambda i: (order.get(i["type"], 3), {"critical": 0, "high": 1, "medium": 2}.get(i["risk"], 3)))
     return "\n".join(
         f"[N{i['id']}] (type={i['type']}; category={i['category']}; sentiment={i['sentiment']}; risk={i['risk']}; "
         f"verified={'true' if i['verified'] else 'false'}; date={i['date'][:10]}) {i['title']}" for i in items[:60]

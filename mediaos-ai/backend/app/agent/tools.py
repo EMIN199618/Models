@@ -35,7 +35,7 @@ from app.rag.retriever import PgVectorRetriever, format_context, rerank
 from app.text import normalize_az, sanitize_source, stem, tokens
 
 _pool = ThreadPoolExecutor(max_workers=8, thread_name_prefix="tool")
-RISK_ORDER = {"low": 0, "medium": 1, "high": 2}
+RISK_ORDER = {"none": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
 
 
 @dataclass
@@ -67,7 +67,7 @@ class SearchNewsArgs(Period):
     sentiment: Literal["positive", "neutral", "negative"] | None = None
     category: str | None = None
     location: str | None = None
-    min_risk: Literal["low", "medium", "high"] | None = None
+    min_risk: Literal["low", "medium", "high", "critical"] | None = None
     limit: int = Field(default=10, ge=1, le=30)
 
 

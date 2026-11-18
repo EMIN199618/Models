@@ -81,6 +81,15 @@ def init_db() -> None:
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ux_news_platform_external "
                           "ON news_items (platform, external_id) WHERE external_id IS NOT NULL"))
         conn.execute(text("INSERT INTO schema_version(version) VALUES (2) ON CONFLICT DO NOTHING"))
+        # Miqrasiya 003 — relevance sübutları, media, dil
+        for tbl, col, typ in (("news_analysis", "relevance_level", "varchar(16)"),
+                              ("news_analysis", "matched_keywords", "jsonb DEFAULT '[]'::jsonb"),
+                              ("news_analysis", "matched_entities", "jsonb DEFAULT '[]'::jsonb"),
+                              ("news_analysis", "evidence", "jsonb DEFAULT '[]'::jsonb"),
+                              ("news_items", "media", "jsonb DEFAULT '[]'::jsonb"),
+                              ("news_items", "language", "varchar(8)")):
+            conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS {col} {typ}"))
+        conn.execute(text("INSERT INTO schema_version(version) VALUES (3) ON CONFLICT DO NOTHING"))
 
 
 def drop_db() -> None:

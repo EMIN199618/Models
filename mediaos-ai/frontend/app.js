@@ -8,7 +8,7 @@ const CAT = {
   digital_services: "Rəqəmsal xidmətlər", service_quality: "Xidmət keyfiyyəti", corruption_allegation: "Korrupsiya iddiası",
   revenue_statistics: "Gəlir/statistika", international: "Beynəlxalq", management: "Rəhbərlik", other: "Digər",
 };
-const RISK = { low: "aşağı", medium: "orta", high: "yüksək" };
+const RISK = { none: "risk yoxdur", low: "aşağı", medium: "orta", high: "yüksək", critical: "kritik" };
 
 let token = "";
 let me = null;
@@ -47,8 +47,53 @@ async function login() {
   refresh();
 }
 
+const KIND = { leadership: "Komitə rəhbərliyi", aparat: "Aparatın baş idarə və idarələri", territorial: "Ərazi gömrük idarələri", specialized: "İxtisaslaşmış gömrük idarələri" };
+const STC = { "təsdiqlənmiş": "st-ok", "yoxlanmalıdır": "st-check", "keçmiş rəhbər": "st-past" };
+let structData = null, structKind = "";
+const srcLink = (u, label) => u ? `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(label || new URL(u).hostname)}</a>` : '<span class="muted">istifadəçi siyahısı</span>';
+async function loadStructure() {
+  structData = await api("/api/structure");
+  const ps = structData.position_status;
+  $("#structNote").textContent = `${structData.units.length} struktur bölmə · ${structData.people} şəxs · vəzifə statusları: ` +
+    Object.entries(ps).map(([k, v]) => `${k} ${v}`).join(", ") + ". " + structData.method_note;
+  renderStructure();
+}
+function renderStructure() {
+  let html = "", last = "";
+  for (const u of structData.units.filter((u) => !structKind || u.kind === structKind)) {
+    if (u.kind !== last) { html += `<tr class="kindh"><td colspan="5">${esc(KIND[u.kind] || u.kind)}</td></tr>`; last = u.kind; }
+    const cur = u.leaders.filter((l) => l.status !== "keçmiş rəhbər");
+    const past = u.leaders.length - cur.length;
+    html += `<tr><td>${esc(u.name)}</td>
+      <td>${cur.map((l) => `<button class="lnk" data-p="${l.person_id}">${esc(l.name)}</button><div class="muted small">${esc(l.title)}${l.start ? " · " + esc(l.start) + "-dən" : ""}</div>`).join("") || '<span class="muted">məlumat tapılmadı</span>'}${past ? `<div class="muted small">+${past} keçmiş</div>` : ""}</td>
+      <td>${cur.map((l) => `<span class="st ${STC[l.status]}">${esc(l.status)}</span>`).join("<br>")}</td>
+      <td class="num">${u.news_count}</td>
+      <td class="small">${cur.map((l) => srcLink(l.source_url)).join("<br>") || srcLink(u.source_url)}<div class="muted">yoxlanıb: ${esc(u.last_checked || "—")}</div></td></tr>`;
+  }
+  $("#structBody").innerHTML = html;
+}
+async function showPerson(id) {
+  const p = await api(`/api/persons/${id}`);
+  const pos = p.positions.map((x) => `<tr><td>${esc(x.title)}</td><td><span class="st ${STC[x.status]}">${esc(x.status)}</span></td><td class="num">${esc(x.start || "?")} — ${esc(x.end || (x.status === "keçmiş rəhbər" ? "?" : "indi"))}</td><td class="small">${srcLink(x.source_url, x.source_type)}${x.note ? `<div class="muted">${esc(x.note)}</div>` : ""}</td></tr>`).join("");
+  const v = p.variants || {};
+  const mats = p.materials.map((m) => `<div class="rv"><div>${m.url && !m.is_synthetic ? `<a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.title)}</a>` : esc(m.title)}${m.is_synthetic ? '<span class="synthetic">nümunə</span>' : ""}</div>
+    <div class="muted small">${esc(m.source)} · ${esc(m.published_at.slice(0, 10))} · o tarixdə: ${esc(m.position_at_publication)}</div>
+    <div class="small"><span class="s-${esc(m.sentiment)}">${esc(SENT[m.sentiment] || "—")}</span> · <span class="r-${esc(m.risk_level)}">${esc(RISK[m.risk_level] || "—")}</span></div></div>`).join("") || '<div class="muted">Bu şəxsin DGK kontekstində çəkildiyi material hələ yoxdur.</div>';
+  $("#personPanel").innerHTML = `<h3 style="margin:0">${esc(p.full_name)}</h3>
+    <div class="muted small">Variantlar (avtomatik): ${esc([...(v.ascii || []).slice(0, 1), ...(v.ru || []).slice(0, 1), ...(v.en || []).slice(0, 1), ...(v.tr || []).slice(0, 1)].join(" · "))}</div>
+    <div class="table-wrap"><table><thead><tr><th>Vəzifə tarixçəsi</th><th>Status</th><th>Dövr</th><th>Mənbə</th></tr></thead><tbody>${pos}</tbody></table></div>
+    <h3 style="margin:4px 0 0">Materiallar (${p.materials.length})</h3>${mats}
+    <div class="muted small">${esc(p.note)}</div>`;
+}
+$("#structBody").addEventListener("click", (e) => { const b = e.target.closest("button[data-p]"); if (b) showPerson(b.dataset.p); });
+$("#structTabs").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return; structKind = b.dataset.k;
+  document.querySelectorAll("#structTabs button").forEach((x) => x.classList.toggle("on", x === b)); renderStructure();
+});
+
 function refresh() {
   loadStats();
+  loadStructure();
   loadNews();
   if (me.role !== "viewer") { loadReview(); loadMetrics(); }
   if (me.role === "admin") loadED();
