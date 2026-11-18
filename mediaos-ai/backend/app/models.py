@@ -1,0 +1,247 @@
+"""Verilənlər modeli.
+
+Qatlar bir-birindən ayrıdır:
+  * news_items / news_analysis        — monitorinq məlumatı
+  * documents / chunks                — institusional bilik (RAG)
+  * memory_items                      — istifadəçinin uzunmüddətli yaddaşı
+  * conversations / chat_messages     — söhbət tarixçəsi (qısamüddətli yaddaşın davamlı nüsxəsi)
+  * audit_logs / tool_calls / llm_calls / request_metrics — müşahidə və audit
+"""
+from datetime import datetime
+from typing import Any
+import uuid
+
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import (
+    ARRAY, BigInteger, Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func,
+)
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.config import get_settings
+from app.db import Base
+
+EMB_DIM = get_settings().embedding_dim
+
+
+class User(Base):
+    __tablename__ = "users"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(64), unique=True)
+    display_name: Mapped[str] = mapped_column(String(128))
+    role: Mapped[str] = mapped_column(String(16))  # viewer | analyst | admin
+    api_token_hash: Mapped[str] = mapped_column(String(128), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Source(Base):
+    __tablename__ = "sources"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(128), unique=True)
+    url: Mapped[str | None] = mapped_column(String(512))
+    kind: Mapped[str] = mapped_column(String(32))  # official | media | social | complaint
+    trust_level: Mapped[float] = mapped_column(Float, default=0.5)
+    is_official: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class NewsItem(Base):
+    __tablename__ = "news_items"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source_id: Mapped[int] = mapped_column(ForeignKey("sources.id"))
+    url: Mapped[str | None] = mapped_column(String(1024))
+    title: Mapped[str] = mapped_column(Text)
+    body: Mapped[str] = mapped_column(Text)
+    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    content_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    simhash: Mapped[int] = mapped_column(BigInteger, index=True)
+    # new | relevant | irrelevant | needs_review | duplicate
+    status: Mapped[str] = mapped_column(String(16), default="new", index=True)
+    # official | media | public_opinion  — rəsmi xəbər, media materialı, ictimai rəy/şikayət ayrı saxlanılır
+    content_type: Mapped[str] = mapped_column(String(16), index=True)
+    dup_of_id: Mapped[int | None] = mapped_column(ForeignKey("news_items.id"))
+    is_synthetic: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    source: Mapped[Source] = relationship()
+    analysis: Mapped["NewsAnalysis | None"] = relationship(back_populates="news", uselist=False)
+
+
+class NewsAnalysis(Base):
+    __tablename__ = "news_analysis"
+    news_id: Mapped[int] = mapped_column(ForeignKey("news_items.id", ondelete="CASCADE"), primary_key=True)
+    is_relevant: Mapped[bool] = mapped_column(Boolean)
+    relevance_score: Mapped[float] = mapped_column(Float)
+    relevance_reason: Mapped[str] = mapped_column(Text, default="")
+    category: Mapped[str | None] = mapped_column(String(32), index=True)
+    sentiment: Mapped[str | None] = mapped_column(String(16), index=True)  # positive | neutral | negative
+    sentiment_score: Mapped[float | None] = mapped_column(Float)
+    risk_level: Mapped[str | None] = mapped_column(String(16), index=True)  # low | medium | high
+    risk_score: Mapped[float | None] = mapped_column(Float)
+    risk_reasons: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    # auto | pending_review | confirmed | rejected — yüksək risk insan təsdiqi tələb edir
+    risk_status: Mapped[str] = mapped_column(String(16), default="auto")
+    location: Mapped[str | None] = mapped_column(String(64), index=True)
+    confidence: Mapped[float] = mapped_column(Float, default=0.0)
+    prompt_versions: Mapped[dict[str, str]] = mapped_column(JSONB, default=dict)
+    model: Mapped[str] = mapped_column(String(64), default="")
+    analyzed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    news: Mapped[NewsItem] = relationship(back_populates="analysis")
+
+
+class Document(Base):
+    __tablename__ = "documents"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(Text)
+    source: Mapped[str] = mapped_column(String(128))
+    url: Mapped[str | None] = mapped_column(String(1024))
+    # official_news | official_doc | legislation | media | monitoring | internal
+    doc_type: Mapped[str] = mapped_column(String(32), index=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    approval_status: Mapped[str] = mapped_column(String(16), default="approved")  # approved | pending | rejected
+    access_roles: Mapped[list[str]] = mapped_column(ARRAY(String), default=lambda: ["viewer", "analyst", "admin"])
+    news_id: Mapped[int | None] = mapped_column(ForeignKey("news_items.id", ondelete="SET NULL"))
+    content_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Chunk(Base):
+    __tablename__ = "chunks"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), index=True)
+    ord: Mapped[int] = mapped_column(Integer)
+    text: Mapped[str] = mapped_column(Text)
+    embedding: Mapped[Any] = mapped_column(Vector(EMB_DIM))
+    meta: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+
+    document: Mapped[Document] = relationship()
+
+
+class MemoryItem(Base):
+    """Uzunmüddətli yaddaş: yalnız icazəli və təsdiqlənmiş məlumat."""
+    __tablename__ = "memory_items"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    # dashboard_pref | monitoring_topic | query_template | note
+    kind: Mapped[str] = mapped_column(String(32))
+    key: Mapped[str] = mapped_column(String(128))
+    value: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    approved: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(String(256), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    conversation_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("conversations.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    role: Mapped[str] = mapped_column(String(16))  # human | ai | tool
+    content: Mapped[str] = mapped_column(Text)
+    meta: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ReviewItem(Base):
+    """İnsan yoxlaması növbəsi: aşağı etibarlılıq, yüksək risk, hesabat dərci."""
+    __tablename__ = "review_queue"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    kind: Mapped[str] = mapped_column(String(32), index=True)  # relevance | risk | report | low_confidence
+    news_id: Mapped[int | None] = mapped_column(ForeignKey("news_items.id", ondelete="CASCADE"))
+    report_id: Mapped[int | None] = mapped_column(ForeignKey("reports.id", ondelete="CASCADE"))
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    reviewer_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    note: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Report(Base):
+    __tablename__ = "reports"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(256))
+    body: Mapped[str] = mapped_column(Text)
+    citations: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
+    period_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    period_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(24), default="draft")  # draft | pending_approval | published | rejected
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    approved_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    action: Mapped[str] = mapped_column(String(64), index=True)
+    target: Mapped[str | None] = mapped_column(String(256))
+    detail: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class ToolCallLog(Base):
+    __tablename__ = "tool_calls"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    conversation_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    tool: Mapped[str] = mapped_column(String(64), index=True)
+    args: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    status: Mapped[str] = mapped_column(String(16), index=True)  # ok | error | denied | timeout | invalid
+    latency_ms: Mapped[float] = mapped_column(Float, default=0)
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class LLMCallLog(Base):
+    __tablename__ = "llm_calls"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    chain: Mapped[str] = mapped_column(String(64), index=True)
+    prompt_name: Mapped[str] = mapped_column(String(64))
+    prompt_version: Mapped[str] = mapped_column(String(16))
+    provider: Mapped[str] = mapped_column(String(32))
+    model: Mapped[str] = mapped_column(String(64))
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    latency_ms: Mapped[float] = mapped_column(Float, default=0)
+    cost_usd: Mapped[float] = mapped_column(Float, default=0)
+    status: Mapped[str] = mapped_column(String(16))  # ok | error
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class RequestMetric(Base):
+    __tablename__ = "request_metrics"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    route: Mapped[str] = mapped_column(String(128), index=True)
+    method: Mapped[str] = mapped_column(String(8))
+    status_code: Mapped[int] = mapped_column(Integer)
+    latency_ms: Mapped[float] = mapped_column(Float)
+    cache: Mapped[str | None] = mapped_column(String(8))  # hit | miss | bypass
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class CollectorRun(Base):
+    __tablename__ = "collector_runs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source: Mapped[str] = mapped_column(String(256))
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    fetched: Mapped[int] = mapped_column(Integer, default=0)
+    inserted: Mapped[int] = mapped_column(Integer, default=0)
+    duplicates: Mapped[int] = mapped_column(Integer, default=0)
+    irrelevant: Mapped[int] = mapped_column(Integer, default=0)
+    errors: Mapped[int] = mapped_column(Integer, default=0)
+    # Ən yeni elementin dərc vaxtı ilə toplanma vaxtı arasındakı gecikmə (san.)
+    max_ingest_lag_s: Mapped[float | None] = mapped_column(Float)
+    error: Mapped[str | None] = mapped_column(Text)

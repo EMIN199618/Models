@@ -1,0 +1,70 @@
+"""Mərkəzi konfiqurasiya. Bütün dəyərlər mühit dəyişənlərindən (MEDIAOS_*) oxunur."""
+from functools import lru_cache
+from typing import Literal
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="MEDIAOS_", env_file=".env", extra="ignore")
+
+    env: Literal["dev", "test", "prod"] = "dev"
+
+    # --- PostgreSQL (əsas mənbə) ---
+    database_url: str = "postgresql+psycopg://mediaos:mediaos@localhost:5432/mediaos"
+
+    # --- Redis (yalnız sürət qatı; nasaz olsa sistem PostgreSQL ilə davam edir) ---
+    redis_url: str = "redis://localhost:6379/0"
+    redis_socket_timeout: float = 0.25
+    cache_ttl_dashboard: int = 60
+    cache_ttl_latest_news: int = 30
+    cache_ttl_search: int = 300
+    cache_ttl_ai_answer: int = 120
+    rate_limit_per_minute: int = 60
+    rate_limit_chat_per_minute: int = 20
+
+    # --- LLM qatı ---
+    # local    — deterministik, oflayn evristik model (test və API açarı olmadıqda)
+    # anthropic / openai — real provayderlər
+    llm_provider: Literal["local", "anthropic", "openai"] = "local"
+    llm_model: str = "claude-sonnet-5-5"
+    llm_fallback_provider: Literal["none", "local"] = "local"
+    llm_timeout_s: float = 30.0
+    llm_max_retries: int = 2
+    llm_temperature: float = 0.0
+    # 1M token üçün təxmini qiymət (USD) — xərc hesabatı üçün
+    llm_cost_input_per_mtok: float = 3.0
+    llm_cost_output_per_mtok: float = 15.0
+
+    embedding_provider: Literal["hashing", "openai"] = "hashing"
+    embedding_dim: int = 384
+
+    # --- RAG ---
+    rag_chunk_size: int = 800
+    rag_chunk_overlap: int = 120
+    rag_top_k: int = 8
+    rag_final_k: int = 4
+    rag_min_score: float = 0.12
+
+    # --- Keyfiyyət hədləri ---
+    review_confidence_threshold: float = 0.6
+
+    # --- Agent ---
+    tool_timeout_s: float = 10.0
+    agent_max_steps: int = 5
+
+    # --- Yaddaş ---
+    short_term_max_messages: int = 12
+    short_term_ttl_s: int = 3600
+    long_term_retention_days: int = 365
+    chat_history_retention_days: int = 90
+
+    # --- Collector ---
+    collector_feeds: list[str] = Field(default_factory=list)
+    collector_interval_s: int = 600
+
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()

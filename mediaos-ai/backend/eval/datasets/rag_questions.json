@@ -1,0 +1,13 @@
+[
+ {"id":"q1","question":"Fiziki şəxslər nağd valyutanı hansı məbləğdən bəyan etməlidir?","expected_titles":["nağd valyutanın"],"expected_fact":"10 000"},
+ {"id":"q2","question":"E-gömrük portalında elektron bəyannamə necə təqdim olunur?","expected_titles":["elektron bəyannamənin təqdim"],"expected_fact":"şəxsi kabinet"},
+ {"id":"q3","question":"Qırmızı Körpüdə rüşvət iddiası rəsmi olaraq araşdırılıbmı?","expected_titles":["rüşvət iddiası araşdırılıb","rüşvət tələb olunması barədə"],"expected_fact":"həqiqətə uyğun deyil"},
+ {"id":"q4","question":"Astara gömrük postunda növbələr necə idarə olunur?","expected_titles":["elektron növbə sisteminin"],"expected_fact":"elektron növbə"},
+ {"id":"q5","question":"Vətəndaş müraciətinə neçə gün ərzində baxılır?","expected_titles":["müraciətlərinə baxılması"],"expected_fact":"15 iş günü"},
+ {"id":"q6","question":"Kosmik gəmilər üçün raket yanacağının qiyməti nə qədərdir?","expected_titles":[]},
+ {"id":"q7","question":"Astara gömrük postunda narkotik vasitə aşkarlanması","expected_titles":["12 kq narkotik"],"expected_fact":"12 kiloqram"},
+ {"id":"q8","question":"Hava limanında bəyan edilməmiş dollar aşkarlanıb","expected_titles":["bəyan edilməmiş 85 min"],"expected_fact":"85 min"},
+ {"id":"q9","question":"Gömrük rüsumunu onlayn ödəmək mümkündürmü?","expected_titles":["elektron bəyannamənin təqdim","yeni elektron bəyannamə xidməti"],"expected_fact":"onlayn"},
+ {"id":"q10","question":"Cənub ərazi gömrük idarəsi üzrə daxili monitorinq müşahidələri","expected_titles":["Daxili qeyd"],"role":"analyst","expected_fact":"növbə xətti"},
+ {"id":"q11","question":"Futbol çempionatının nəticələri hansılardır?","expected_titles":[]}
+]

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="az">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MEDIA OS AI</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="logo">◆</span> MEDIA OS AI <small>DGK media monitorinqi</small></div>
+  <div class="auth">
+    <span id="who" class="muted"></span>
+    <input id="token" type="password" placeholder="API token (məs. mos_dev_analyst_token)" autocomplete="off">
+    <button id="login">Daxil ol</button>
+  </div>
+</header>
+
+<main id="app" hidden>
+  <section class="kpis" id="kpis"></section>
+
+  <div class="grid">
+    <section class="card">
+      <div class="card-h"><h2>Gündəlik dinamika</h2>
+        <select id="days"><option value="7">7 gün</option><option value="30" selected>30 gün</option><option value="90">90 gün</option></select>
+      </div>
+      <div id="chart" class="chart" role="img" aria-label="Gündəlik xəbər sayı"></div>
+      <div class="legend"><span class="sw total"></span>Cəmi <span class="sw neg"></span>Mənfi</div>
+      <div class="split" id="splits"></div>
+    </section>
+
+    <section class="card chat">
+      <div class="card-h"><h2>MEDIA OS AI Analyst</h2><button id="newchat" class="ghost">Yeni söhbət</button></div>
+      <div id="messages" class="messages" aria-live="polite">
+        <div class="hint">Nümunə suallar:
+          <button class="chip">Bu gün DGK haqqında hansı xəbərlər yayımlanıb?</button>
+          <button class="chip">Son 7 gündə mənfi rəylər hansı mövzularla bağlıdır?</button>
+          <button class="chip">Astara gömrüyü haqqında şikayətləri göstər.</button>
+          <button class="chip">Qırmızı Körpüdə rüşvət tələb olunması iddiası rəsmi mənbədə təsdiqlənib?</button>
+          <button class="chip">DGK rəhbərliyi üçün gündəlik analitik icmal hazırla.</button>
+        </div>
+      </div>
+      <form id="ask" class="ask">
+        <input id="q" placeholder="Sualınızı yazın…" maxlength="2000" autocomplete="off">
+        <button>Göndər</button>
+      </form>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="card-h"><h2>Son xəbərlər</h2>
+      <div class="tabs" id="tabs">
+        <button data-ct="" class="on">Hamısı</button>
+        <button data-ct="official">Rəsmi</button>
+        <button data-ct="media">Media</button>
+        <button data-ct="public_opinion">İctimai rəy</button>
+      </div>
+    </div>
+    <div class="table-wrap"><table id="news"><thead><tr><th>Tarix</th><th>Başlıq</th><th>Mənbə</th><th>Növ</th><th>Kateqoriya</th><th>Sentiment</th><th>Risk</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <div class="grid">
+    <section class="card" id="reviewCard" hidden>
+      <div class="card-h"><h2>İnsan yoxlaması</h2><span class="muted" id="reviewCount"></span></div>
+      <div id="review"></div>
+    </section>
+    <section class="card" id="metricsCard" hidden>
+      <div class="card-h"><h2>Sistem göstəriciləri (24 saat)</h2><button id="refreshMetrics" class="ghost">Yenilə</button></div>
+      <div id="metrics" class="metrics"></div>
+    </section>
+  </div>
+</main>
+
+<section id="welcome" class="welcome">
+  <h1>MEDIA OS AI</h1>
+  <p>DGK üçün media monitorinqi, semantik axtarış və AI Analyst. Davam etmək üçün API token daxil edin.</p>
+  <p class="muted">Dev tokenləri: <code>mos_dev_admin_token</code>, <code>mos_dev_analyst_token</code>, <code>mos_dev_viewer_token</code></p>
+</section>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

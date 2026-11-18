@@ -1,0 +1,14 @@
+[
+ {"question":"Bu gün DGK haqqında hansı xəbərlər yayımlanıb?","expected_tools":["search_news"]},
+ {"question":"Son 7 gündə mənfi rəylər hansı mövzularla bağlıdır?","expected_tools":["get_trends","search_news"]},
+ {"question":"Astara gömrüyü haqqında şikayətləri göstər.","expected_tools":["search_news"]},
+ {"question":"Astara gömrük postunda narkotik aşkarlanması əvvəl də yayımlanıb?","expected_tools":["semantic_search"]},
+ {"question":"Qırmızı Körpüdə rüşvət tələb olunması iddiası rəsmi mənbədə təsdiqlənib?","expected_tools":["search_official_sources"]},
+ {"question":"Son bir ayda gömrük fəaliyyətinə dair əsas ictimai narazılıqlar hansılardır?","expected_tools":["get_trends","search_news"]},
+ {"question":"DGK rəhbərliyi üçün gündəlik analitik icmal hazırla.","expected_tools":["generate_report"]},
+ {"question":"Son 30 gündə yüksək riskli xəbərlər hansılardır?","expected_tools":["search_news"]},
+ {"question":"Narkotik qaçaqmalçılığı xəbərlərini müxtəlif mənbələrdə müqayisə et","expected_tools":["compare_news"]},
+ {"question":"Son bir ayda neçə xəbər yayımlanıb, statistika göstər","expected_tools":["get_trends"]},
+ {"question":"Hava limanında 85 min dollar aşkarlanması rəsmi mənbədə təsdiqlənib?","expected_tools":["search_official_sources"]},
+ {"question":"Sədərək gömrük postu haqqında son xəbərlər","expected_tools":["search_news"]}
+]
