@@ -13,7 +13,17 @@ Dövlət Gömrük Komitəsi (DGK) üçün AI dəstəkli media monitorinqi platfo
 - [Ölçmə nəticələri](docs/EVAL_RESULTS.md)
 - [Yekun hesabat](docs/FINAL_REPORT.md)
 
-## Docker ilə işə salma
+## Windows-da demo (lokal model) — ən sadə yol
+
+1. [Docker Desktop](https://www.docker.com/products/docker-desktop/) qurulu və açıq olsun (NVIDIA GPU varsa, Docker Desktop-da WSL2 + GPU dəstəyi aktiv olmalıdır).
+2. Layihə qovluğunda **`start-demo.bat`** faylını iki dəfə klikləyin.
+   - GPU varsa `qwen2.5:7b-instruct` GPU-da, yoxdursa `qwen2.5:3b-instruct` CPU-da işə düşür.
+   - İlk dəfə model yüklənir (~2–5 GB), sonra brauzer `http://localhost:8000` ünvanını açır.
+3. Dayandırmaq üçün `stop-demo.bat`. Məlumatlar və yüklənmiş model saxlanılır.
+
+Bütün servislər yalnız `127.0.0.1`-də açılır. Lokal model sorğuları kompüterdən çıxmır və API xərci yoxdur.
+
+## Docker ilə işə salma (əl ilə)
 
 ```bash
 cp backend/.env.example backend/.env
@@ -51,7 +61,17 @@ uvicorn app.api.main:app --port 8000
 python -m app.worker
 ```
 
-## Real LLM qoşmaq
+## LLM seçimi
+
+| `MEDIAOS_LLM_PROVIDER` | Nədir | Nə vaxt |
+|---|---|---|
+| `ollama` | Lokal model (Ollama, standart `qwen2.5:7b-instruct`) | **Demo** — pulsuz, məlumat kompüterdən çıxmır |
+| `anthropic` | Claude API (`claude-opus-5-5`) | Canlı server, ən yüksək keyfiyyət, ödənişli |
+| `local` | Oflayn evristika | Testlər; LLM olmadıqda ehtiyat variant |
+
+Seçilmiş provayder əlçatmaz olduqda sistem avtomatik `local` rejiminə keçir və dayanmır.
+
+## Real LLM qoşmaq (Claude API)
 
 `backend/.env` faylında:
 

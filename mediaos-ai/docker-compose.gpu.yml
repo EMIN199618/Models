@@ -1,0 +1,10 @@
+# NVIDIA GPU üçün əlavə: Ollama modeli GPU-da işləyir. Docker Desktop + WSL2 + NVIDIA drayveri lazımdır.
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

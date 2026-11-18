@@ -8,7 +8,9 @@ Prinsip: hər mərhələ işlək halda bitir. İşləməyən funksiya "işləyir
 - [ ] **EnsembleData tokeni → real TikTok/Instagram toplaması.** Daxil etmə yolu: admin paneli → "Sosial şəbəkələr".
 - [ ] **DGK-nın rəsmi Instagram/TikTok hesablarının təsdiqi.** Panelin "hesab axtar" funksiyası ilə tapılıb təsdiqlənməlidir.
 - [ ] **customs.gov.az-ın rəsmi xəbər lenti** (RSS/HTML) sizin şəbəkədən. Ardınca `yoxlanmalıdır` statuslu şəxslərin rəsmi səhifə ilə yoxlanması.
-- [ ] **Real LLM.** Variantlar: lokal (Ollama və s.) və ya API. Sonra `eval` yenidən işlədilir. Gözlənti: kateqoriya dəqiqliyi yaxşılaşacaq (hazırda hold-out üzrə 0.64).
+- [x] **Lokal LLM (Ollama) inteqrasiyası** — demo üçün seçildi; kod, Docker, `start-demo.bat` hazırdır.
+- [ ] **Sizin kompüterdə real model ilə ölçmə:** `python -m eval.run_eval` (provider=ollama). Azərbaycan dilində 7B modelin keyfiyyəti mütləq ölçülməlidir — zəif olarsa: `qwen2.5:14b` (GPU yaddaşı imkan verirsə) və ya canlı serverdə Claude API.
+- [ ] **Təqdimatdan sonra canlı server qərarı:** lokal model qalır, yoxsa Claude API (`MEDIAOS_LLM_PROVIDER=anthropic`) — bir parametrlə dəyişir.
 
 ## Mərhələ 2 — 360° mənbələr
 

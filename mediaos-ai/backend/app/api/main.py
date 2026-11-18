@@ -81,8 +81,11 @@ async def metrics_mw(request: Request, call_next):
 @app.get("/health")
 def health(db: Session = Depends(get_session)) -> dict[str, Any]:
     db_ok = db.execute(text("SELECT 1")).scalar() == 1
-    return {"status": "ok" if db_ok else "degraded", "postgres": db_ok, "redis": get_cache().ping(),
-            "llm": provider_info()}
+    info = provider_info()
+    if info["provider"] == "ollama":
+        from app.llm.provider import ollama_status
+        info["ollama"] = ollama_status()
+    return {"status": "ok" if db_ok else "degraded", "postgres": db_ok, "redis": get_cache().ping(), "llm": info}
 
 
 # ------------------------------------------------------------------ dashboard

@@ -1,4 +1,6 @@
-# MEDIA OS AI — PostgreSQL+pgvector, Redis (LRU, yaddaş limiti), API, worker.
+# MEDIA OS AI — demo: PostgreSQL+pgvector, Redis, lokal LLM (Ollama), API, worker.
+# Bütün portlar yalnız 127.0.0.1-ə açılır (şəbəkədəki digər kompüterlər qoşula bilməz).
+# GPU üçün: docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d   (start-demo.bat bunu özü seçir)
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -6,44 +8,79 @@ services:
       POSTGRES_USER: mediaos
       POSTGRES_PASSWORD: mediaos
       POSTGRES_DB: mediaos
-    ports: ["5432:5432"]
+    ports: ["127.0.0.1:5432:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U mediaos"]
       interval: 5s
-      retries: 10
+      retries: 20
 
   redis:
     image: redis:7-alpine
-    # Yaddaş limiti + eviction siyasəti: limit dolanda ən az istifadə olunan açarlar silinir
+    # Yaddaş limiti + eviction: limit dolanda ən az istifadə olunan açarlar silinir
     command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru", "--save", ""]
-    ports: ["6379:6379"]
+    ports: ["127.0.0.1:6379:6379"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
-      retries: 10
+      retries: 20
+
+  ollama:
+    image: ollama/ollama:0.5.7
+    environment:
+      OLLAMA_MAX_LOADED_MODELS: "1"   # eyni anda yalnız bir model yaddaşda (16 GB RAM üçün)
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_KEEP_ALIVE: "10m"        # boş qaldıqda model yaddaşdan çıxarılır
+    ports: ["127.0.0.1:11434:11434"]
+    volumes: [ollama:/root/.ollama]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      retries: 30
+
+  # Modeli bir dəfə yükləyir (təxminən 4.7 GB) və dayanır. Sonrakı işə salmalarda yükləmə təkrarlanmır.
+  ollama-pull:
+    image: ollama/ollama:0.5.7
+    environment:
+      OLLAMA_HOST: ollama:11434
+    entrypoint: ["/bin/sh", "-c", "ollama pull ${MEDIAOS_OLLAMA_MODEL:-qwen2.5:7b-instruct}"]
+    depends_on:
+      ollama: { condition: service_healthy }
+    restart: "no"
 
   api:
     build: { context: ., dockerfile: backend/Dockerfile }
-    env_file: [backend/.env]
+    env_file:
+      - path: backend/.env
+        required: false
     environment:
       MEDIAOS_DATABASE_URL: postgresql+psycopg://mediaos:mediaos@postgres:5432/mediaos
       MEDIAOS_REDIS_URL: redis://redis:6379/0
-    ports: ["8000:8000"]
+      MEDIAOS_LLM_PROVIDER: ${MEDIAOS_LLM_PROVIDER:-ollama}
+      MEDIAOS_OLLAMA_BASE_URL: http://ollama:11434
+      MEDIAOS_OLLAMA_MODEL: ${MEDIAOS_OLLAMA_MODEL:-qwen2.5:7b-instruct}
+    ports: ["127.0.0.1:8000:8000"]
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+      ollama: { condition: service_healthy }
 
   worker:
     build: { context: ., dockerfile: backend/Dockerfile }
     command: ["python", "-m", "app.worker"]
-    env_file: [backend/.env]
+    env_file:
+      - path: backend/.env
+        required: false
     environment:
       MEDIAOS_DATABASE_URL: postgresql+psycopg://mediaos:mediaos@postgres:5432/mediaos
       MEDIAOS_REDIS_URL: redis://redis:6379/0
+      MEDIAOS_LLM_PROVIDER: ${MEDIAOS_LLM_PROVIDER:-ollama}
+      MEDIAOS_OLLAMA_BASE_URL: http://ollama:11434
+      MEDIAOS_OLLAMA_MODEL: ${MEDIAOS_OLLAMA_MODEL:-qwen2.5:7b-instruct}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
 
 volumes:
   pgdata:
+  ollama:

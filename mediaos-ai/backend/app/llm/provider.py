@@ -22,8 +22,20 @@ from app.llm.local_model import LocalAnalystModel
 _pool = ThreadPoolExecutor(max_workers=16, thread_name_prefix="llm-timeout")
 
 
-def _primary() -> BaseChatModel:
+def _ollama(json_mode: bool) -> BaseChatModel:
+    from langchain_ollama import ChatOllama
     s = get_settings()
+    # json_mode: strukturlaşdırılmış cavablar (Pydantic sxemi) üçün Ollama-nın JSON rejimi.
+    # Tool-calling zamanı JSON rejimi qoyulmur — model tool_calls qaytarmalıdır.
+    return ChatOllama(model=s.ollama_model, base_url=s.ollama_base_url, temperature=0, num_ctx=s.ollama_num_ctx,
+                      keep_alive=s.ollama_keep_alive, format="json" if json_mode else None,
+                      client_kwargs={"timeout": s.ollama_timeout_s})
+
+
+def _primary(json_mode: bool = True) -> BaseChatModel:
+    s = get_settings()
+    if s.llm_provider == "ollama":
+        return _ollama(json_mode)
     if s.llm_provider == "anthropic":
         from langchain_anthropic import ChatAnthropic
         # temperature göndərilmir: Claude Opus 5.5 sampling parametrlərini qəbul etmir (400).
@@ -53,14 +65,15 @@ def get_chat_model() -> Runnable:
 
 def get_tool_model(tools: list[Any]) -> Runnable:
     s = get_settings()
-    primary = _primary().bind_tools(tools)
+    primary = _primary(json_mode=False).bind_tools(tools)
     fb = LocalAnalystModel().bind_tools(tools) if (s.llm_fallback_provider == "local" and s.llm_provider != "local") else None
     return _wrap(primary, fb)
 
 
 def with_timeout(runnable: Runnable, seconds: float | None = None) -> Runnable:
     """İstənilən Runnable-a sərt timeout əlavə edir (provayderin öz timeout-undan əlavə)."""
-    secs = seconds or get_settings().llm_timeout_s
+    s = get_settings()
+    secs = seconds or (s.ollama_timeout_s if s.llm_provider == "ollama" else s.llm_timeout_s)
 
     def _run(x: Any, config: RunnableConfig) -> Any:
         fut = _pool.submit(runnable.invoke, x, config)
@@ -74,6 +87,20 @@ def with_timeout(runnable: Runnable, seconds: float | None = None) -> Runnable:
 
 def provider_info() -> dict[str, Any]:
     s = get_settings()
-    return {"provider": s.llm_provider, "model": s.llm_model if s.llm_provider != "local" else "local-heuristic-v1",
+    model = {"local": "local-heuristic-v1", "ollama": s.ollama_model}.get(s.llm_provider, s.llm_model)
+    return {"provider": s.llm_provider, "model": model,
             "fallback": s.llm_fallback_provider, "timeout_s": s.llm_timeout_s, "max_retries": s.llm_max_retries,
             "embeddings": s.embedding_provider}
+
+
+def ollama_status() -> dict[str, Any]:
+    """Ollama serveri işləyirmi və konfiqurasiya edilmiş model yüklənibmi (dashboard üçün)."""
+    import httpx
+    s = get_settings()
+    try:
+        r = httpx.get(f"{s.ollama_base_url}/api/tags", timeout=3)
+        names = [m.get("name", "") for m in r.json().get("models", [])]
+        want = s.ollama_model if ":" in s.ollama_model else s.ollama_model + ":latest"
+        return {"reachable": True, "model": s.ollama_model, "model_pulled": want in names, "available": names}
+    except Exception as exc:
+        return {"reachable": False, "model": s.ollama_model, "error": type(exc).__name__}

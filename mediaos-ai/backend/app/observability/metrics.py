@@ -40,7 +40,7 @@ class LLMMetricsHandler(BaseCallbackHandler):
         latency = (time.perf_counter() - start) * 1000
         s = get_settings()
         cost = in_tok / 1e6 * s.llm_cost_input_per_mtok + out_tok / 1e6 * s.llm_cost_output_per_mtok
-        if "local" in cls.lower() or model.startswith("local"):
+        if "local" in cls.lower() or "ollama" in cls.lower() or model.startswith("local"):  # lokal model: API xərci yoxdur
             cost = 0.0
         with self._lock:
             self.totals["calls"] += 1

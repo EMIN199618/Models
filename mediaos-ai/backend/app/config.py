@@ -27,13 +27,19 @@ class Settings(BaseSettings):
     # --- LLM qatı ---
     # local    — deterministik, oflayn evristik model (test və API açarı olmadıqda)
     # anthropic / openai — real provayderlər
-    llm_provider: Literal["local", "anthropic", "openai"] = "local"
+    llm_provider: Literal["local", "ollama", "anthropic", "openai"] = "local"
     llm_model: str = "claude-opus-5-5"
     # Anthropic API ünvanı açıq verilir ki, mühitdəki ANTHROPIC_BASE_URL sorğuları başqa yerə yönəltməsin
     anthropic_base_url: str = "https://api.anthropic.com"
     # Düşünmə həmişə aktivdir (Opus 5.5) — thinking tokenləri də bu limitə daxildir
     llm_max_tokens: int = 16000
     llm_fallback_provider: Literal["none", "local"] = "local"
+    # --- Lokal LLM (Ollama) — demo üçün. 16 GB RAM + NVIDIA GPU üçün 7–8B, 4-bit model tövsiyə olunur ---
+    ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "qwen2.5:7b-instruct"
+    ollama_num_ctx: int = 8192          # kontekst pəncərəsi (VRAM istifadəsinə birbaşa təsir edir)
+    ollama_keep_alive: str = "10m"      # boş qaldıqda model yaddaşdan çıxarılır (RAM/VRAM azad olur)
+    ollama_timeout_s: float = 120.0     # lokal model API-dən yavaşdır
     llm_timeout_s: float = 30.0
     llm_max_retries: int = 2
     llm_temperature: float = 0.0

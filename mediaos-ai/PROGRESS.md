@@ -1,6 +1,6 @@
 # MEDIA OS AI — İrəliləyiş
 
-**Son yeniləmə:** 2026-11-18 · **Testlər:** 98/98 keçir ([TEST_RESULTS.md](TEST_RESULTS.md))
+**Son yeniləmə:** 2026-11-18 · **Testlər:** 102/102 keçir ([TEST_RESULTS.md](TEST_RESULTS.md))
 
 ## Vacib qeyd: hansı layihə
 
@@ -22,6 +22,7 @@ Bu repo (`Models/mediaos-ai`) bulud sessiyasında sıfırdan qurulmuş MEDIA OS 
 | 6. Risk v2: none/low/medium/high/critical, bal ≠ etibarlılıq | ✅ |
 | 7. Multimodal | ⚠ OCR işləyir; Vision AI və speech-to-text yoxdur |
 | 8. 360° platformalar (Telegram, YouTube, Facebook, X, forumlar) | ⛔ Başlanmayıb (ROADMAP-a bax) |
+| 9. Lokal LLM (Ollama) — demo | ✅ Kod, Docker və `start-demo.bat` hazırdır; Ollama API formatında test serveri ilə yoxlanılıb. ⛔ Real model bu mühitdə işə salınmayıb (Ollama reyestri bloklanıb, GPU yoxdur) |
 
 ## Bu mərhələdə nə tamamlandı
 
@@ -74,7 +75,7 @@ Bu repo (`Models/mediaos-ai`) bulud sessiyasında sıfırdan qurulmuş MEDIA OS 
 
 | Modul | Vəziyyət |
 |---|---|
-| Relevance, sentiment, risk, RAG, agent | Oflayn **local** model (evristika) ilə işləyir. Real LLM qoşulmayıb (API açarı yoxdur) |
+| Relevance, sentiment, risk, RAG, agent | Bu mühitdə oflayn **local** model (evristika) ilə işləyir. Demo üçün **Ollama** (`qwen2.5:7b-instruct`) qoşulub — sizin kompüterdə işləyəcək; keyfiyyəti orada ölçülməlidir |
 | Embedding | `hashing` (oflayn). Neyron model qoşulmayıb |
 | OCR | Real (Tesseract) |
 | Vision AI | Yoxdur |
