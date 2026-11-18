@@ -26,8 +26,10 @@ def _primary() -> BaseChatModel:
     s = get_settings()
     if s.llm_provider == "anthropic":
         from langchain_anthropic import ChatAnthropic
-        return ChatAnthropic(model=s.llm_model, temperature=s.llm_temperature, timeout=s.llm_timeout_s,
-                             max_retries=0, max_tokens=2048)
+        # temperature göndərilmir: Claude Opus 5.5 sampling parametrlərini qəbul etmir (400).
+        # API açarı ANTHROPIC_API_KEY mühit dəyişənindən oxunur.
+        return ChatAnthropic(model=s.llm_model, base_url=s.anthropic_base_url, timeout=s.llm_timeout_s,
+                             max_retries=0, max_tokens=s.llm_max_tokens)
     if s.llm_provider == "openai":
         from langchain_openai import ChatOpenAI
         return ChatOpenAI(model=s.llm_model, temperature=s.llm_temperature, timeout=s.llm_timeout_s, max_retries=0)

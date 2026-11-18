@@ -57,7 +57,7 @@ python -m app.worker
 
 ```
 MEDIAOS_LLM_PROVIDER=anthropic
-MEDIAOS_LLM_MODEL=claude-sonnet-5-5
+MEDIAOS_LLM_MODEL=claude-opus-5-5
 ANTHROPIC_API_KEY=...
 ```
 

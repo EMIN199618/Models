@@ -28,14 +28,18 @@ class Settings(BaseSettings):
     # local    — deterministik, oflayn evristik model (test və API açarı olmadıqda)
     # anthropic / openai — real provayderlər
     llm_provider: Literal["local", "anthropic", "openai"] = "local"
-    llm_model: str = "claude-sonnet-5-5"
+    llm_model: str = "claude-opus-5-5"
+    # Anthropic API ünvanı açıq verilir ki, mühitdəki ANTHROPIC_BASE_URL sorğuları başqa yerə yönəltməsin
+    anthropic_base_url: str = "https://api.anthropic.com"
+    # Düşünmə həmişə aktivdir (Opus 5.5) — thinking tokenləri də bu limitə daxildir
+    llm_max_tokens: int = 16000
     llm_fallback_provider: Literal["none", "local"] = "local"
     llm_timeout_s: float = 30.0
     llm_max_retries: int = 2
     llm_temperature: float = 0.0
     # 1M token üçün təxmini qiymət (USD) — xərc hesabatı üçün
-    llm_cost_input_per_mtok: float = 3.0
-    llm_cost_output_per_mtok: float = 15.0
+    llm_cost_input_per_mtok: float = 4.0    # claude-opus-5-5
+    llm_cost_output_per_mtok: float = 20.0
 
     embedding_provider: Literal["hashing", "openai"] = "hashing"
     embedding_dim: int = 384
