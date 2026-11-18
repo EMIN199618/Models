@@ -59,6 +59,36 @@
     <div class="table-wrap"><table id="news"><thead><tr><th>Tarix</th><th>Başlıq</th><th>Mənbə</th><th>Növ</th><th>Kateqoriya</th><th>Sentiment</th><th>Risk</th></tr></thead><tbody></tbody></table></div>
   </section>
 
+  <section class="card" id="edCard" hidden>
+    <div class="card-h"><h2>Sosial şəbəkələr — Instagram və TikTok (EnsembleData)</h2><span class="muted" id="edStatus"></span></div>
+    <div class="ed-grid">
+      <div class="ed-col">
+        <h3>API token</h3>
+        <p class="muted small">Token serverdə saxlanılır və heç vaxt geri göstərilmir. Saxlamazdan əvvəl EnsembleData ilə yoxlanılır.</p>
+        <form id="edTokenForm" class="ask">
+          <input id="edToken" type="password" placeholder="EnsembleData token" autocomplete="off" minlength="16">
+          <button>Yoxla və saxla</button>
+        </form>
+        <div class="ask">
+          <button id="edRun">İndi topla</button>
+          <input id="edUnits" type="number" min="1" max="5000" placeholder="unit limiti (məs. 150)">
+        </div>
+        <div id="edResult" class="small"></div>
+      </div>
+      <div class="ed-col">
+        <h3>Nə izlənilir</h3>
+        <label class="small" for="edKw">TikTok açar sözləri (vergüllə)</label><input id="edKw">
+        <label class="small" for="edTags">TikTok heşteqləri</label><input id="edTags">
+        <label class="small" for="edIgOff">Instagram rəsmi hesablar (postlar + şərhlər)</label><input id="edIgOff" placeholder="məs. dgk_hesab_adı">
+        <label class="small" for="edIgMedia">Instagram media hesabları</label><input id="edIgMedia">
+        <label class="small" for="edTtOff">TikTok rəsmi hesablar</label><input id="edTtOff">
+        <div class="ask"><button id="edSave" class="ghost">Parametrləri saxla</button></div>
+        <form id="edDiscoverForm" class="ask"><input id="edDiscover" placeholder="Instagram-da hesab axtar (4 unit)"><button class="ghost">Axtar</button></form>
+        <div id="edFound" class="small"></div>
+      </div>
+    </div>
+  </section>
+
   <div class="grid">
     <section class="card" id="reviewCard" hidden>
       <div class="card-h"><h2>İnsan yoxlaması</h2><span class="muted" id="reviewCount"></span></div>

@@ -102,3 +102,28 @@ Məlumat sintetikdir, model `local` (oflayn) rejimdədir.
 4. Neyron embedding və cross-encoder reranker əlavə edib RAG precision-ı artırmaq.
 5. İnsan yoxlaması qərarlarını etiketli məlumat kimi toplamaq və threshold-ları kalibrləmək.
 6. SSO, audit logların SIEM-ə ötürülməsi, backup və monitorinq (Prometheus/Grafana).
+
+
+---
+
+## Əlavə: Instagram və TikTok inteqrasiyası (EnsembleData)
+
+**Nə edildi**
+- `app/collectors/ensembledata.py`:
+  - TikTok: açar söz, heşteq və hesab postları;
+  - Instagram: hesab postları və rəsmi postların altındakı şərhlər.
+  - Unit büdcə qoruyucusu var. 491/493/495 xətaları ayrıca idarə olunur, 5xx xətalarında təkrar cəhd edilir. Token loglardan və xəta mesajlarından silinir.
+- **Miqrasiya 002.** `news_items` cədvəlinə `platform`, `external_id`, `author_handle`, `engagement` sahələri əlavə olunub, `(platform, external_id)` üzrə unikal indeks qurulub. Eyni post ikinci dəfə emal olunmur.
+- **Risk.** Viral yayılma (baxış ≥ 50 000 və ya paylaşım ≥ 500) R6 meyarını verir. Risk promptu 1.4.0 versiyasına yeniləndi.
+- **DGK filtri.** Sosial şəbəkə yazılışı ("gomruk", "qacaqmal") və rus dili ("таможня", "ГТК") tanınır. Türkiyə gömrüyü ("gümrük") səhvən tutulmur. Azərbaycan gömrük postunun adı + gömrük sözü güclü siqnal sayılır.
+- **Admin API və panel:** token (yoxlanılır və maskalanır), parametrlər, "İndi topla", unit istifadəsi, Instagram-da hesab axtarışı.
+- **Testlər:** 11 yeni test (cəmi 70). EnsembleData-nın OpenAPI cavab strukturu ilə HTTP mock, tam pipeline, viral risk, dublikat, büdcə, xəta kodları, tokenin heç yerdə görünməməsi.
+
+**Real API ilə yoxlanılan:** bu mühitdən `ensembledata.com`-a çıxış açıldı. Token formatı (dəqiq 16 simvol) və 491 "Token not found" cavabı real API-dən alınıb sistemdə düzgün göstərilir.
+
+**Hələ edilməyib:** real token olmadığı üçün real DGK paylaşımları toplanmayıb. Real paylaşımlar üzərində keyfiyyət ölçülməyib.
+
+**Məlum məhdudiyyətlər**
+- Instagram-da açar sözlə axtarış yoxdur; yalnız izlənən hesablar toplanır.
+- Rəsmi posta yazılan istənilən şərh DGK-ya aid sayılır, mövzudan kənar şərhlər də daxil olmaqla.
+- Rus dilində sentiment leksikonu yoxdur: rusca postlar tanınır, amma tonallıq əsasən "neytral" çıxacaq. Real LLM bunu həll edir.

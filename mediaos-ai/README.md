@@ -63,6 +63,26 @@ ANTHROPIC_API_KEY=...
 
 Açar olmadıqda sistem `local` (oflayn, deterministik) modellə işləyir. Real provayder xəta verəndə də avtomatik `local` modelə keçir.
 
+## Instagram və TikTok (EnsembleData)
+
+1. Dashboard-a admin tokeni ilə daxil olun və **Sosial şəbəkələr** panelinə keçin.
+2. EnsembleData tokenini daxil edin. Token 16 simvoldan ibarətdir. Saxlamazdan əvvəl EnsembleData ilə yoxlanılır və geri göstərilmir.
+3. **Nə izlənilir** bölməsində TikTok açar sözlərini və heşteqlərini yoxlayın. DGK-nın rəsmi Instagram hesabını **Instagram-da hesab axtar** ilə tapıb əlavə edin. Instagram API-də açar sözlə post axtarışı yoxdur, ona görə Instagram üçün izlənən hesablar lazımdır.
+4. **İndi topla** düyməsini basın. Toplama unit limiti ilə qorunur (default 150). Worker toplamanı `MEDIAOS_ENSEMBLEDATA_INTERVAL_S` aralığı ilə avtomatik təkrarlayır.
+
+Toplanan paylaşımlar adi pipeline-dan keçir: DGK filtri → kateqoriya ‖ sentiment → risk → insan yoxlaması.
+- Viral paylaşımlar (baxış ≥ 50 000 və ya paylaşım ≥ 500) R6 risk meyarını alır.
+- Rəsmi DGK postlarının altındakı şərhlər ictimai rəy kimi təsnif olunur.
+- Fərdi istifadəçilərin hesab adları dashboard-da maskalanır.
+
+| Mənbə | Endpoint | Qiymət |
+|---|---|---|
+| TikTok açar söz | `/tt/keyword/search` | 1 unit / sorğu (20 post) |
+| TikTok heşteq | `/tt/hashtag/posts` | 1 unit / sorğu |
+| TikTok hesab | `/tt/user/posts` | 1 + depth |
+| Instagram hesab postları | `/instagram/user/posts` | post sayı qədər |
+| Instagram şərhlər | `/instagram/post/comments` | 2 unit |
+
 ## Testlər və ölçmə
 
 Testlər üçün ayrıca `mediaos_test` bazası lazımdır. Ölçmə skripti isə `mediaos_eval` bazasından istifadə edir.

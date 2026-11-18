@@ -33,6 +33,22 @@ class RawNews:
     published_at: datetime
     url: str | None = None
     is_synthetic: bool = False
+    platform: str | None = None          # tiktok | instagram | None (veb)
+    external_id: str | None = None
+    author_handle: str | None = None
+    engagement: dict[str, Any] = field(default_factory=dict)
+
+
+def reach_label(eng: dict[str, Any]) -> str:
+    """Sosial yayılma: viral hədləri aşılırsa 'viral' işarəsi (risk meyarı R6)."""
+    from app.config import get_settings
+    if not eng:
+        return "—"
+    s = get_settings()
+    views, shares = int(eng.get("views") or 0), int(eng.get("shares") or 0)
+    viral = views >= s.ed_viral_views or shares >= s.ed_viral_shares
+    parts = [f"{k}={v}" for k, v in eng.items() if isinstance(v, int) and v]
+    return ("viral; " if viral else "") + (", ".join(parts) or "—")
 
 
 @dataclass
@@ -83,7 +99,9 @@ def process_batch(db: Session, items: list[RawNews], index: bool = True) -> Pipe
         pub = raw.published_at if raw.published_at.tzinfo else raw.published_at.replace(tzinfo=timezone.utc)
         h = content_hash(title, body)
         # ---- Exact dedup
-        if db.scalar(select(NewsItem.id).where(NewsItem.content_hash == h)):
+        if db.scalar(select(NewsItem.id).where(NewsItem.content_hash == h)) or (
+                raw.external_id and db.scalar(select(NewsItem.id).where(
+                    NewsItem.platform == raw.platform, NewsItem.external_id == raw.external_id))):
             st.duplicates += 1
             continue
         src = _source(db, raw.source_name, raw.source_kind)
@@ -102,7 +120,8 @@ def process_batch(db: Session, items: list[RawNews], index: bool = True) -> Pipe
             st.near_duplicates += 1
         n = NewsItem(source_id=src.id, url=raw.url, title=title, body=body, published_at=pub, content_hash=h,
                      simhash=sh, status=status, content_type=r.content_type, dup_of_id=twin.id if twin else None,
-                     is_synthetic=raw.is_synthetic)
+                     is_synthetic=raw.is_synthetic, platform=raw.platform, external_id=raw.external_id,
+                     author_handle=raw.author_handle, engagement=raw.engagement or {})
         db.add(n)
         db.flush()
         a = NewsAnalysis(news_id=n.id, is_relevant=r.is_relevant, relevance_score=r.score, relevance_reason=r.reason,
@@ -124,7 +143,8 @@ def process_batch(db: Session, items: list[RawNews], index: bool = True) -> Pipe
         # ---- Risk (Chain 3) — sentimentdən müstəqil meyarlarla
         mentions = 1 + (db.scalar(text("SELECT count(*) FROM news_items WHERE dup_of_id = :i"), {"i": n.id}) or 0)
         ra = risk.invoke({"title": title, "body": body, "content_type": r.content_type,
-                          "sentiment": c.sentiment.sentiment, "mentions": mentions})
+                          "sentiment": c.sentiment.sentiment, "mentions": mentions,
+                          "reach": reach_label(raw.engagement)})
         a.risk_level, a.risk_score = ra.result.risk_level, ra.result.score
         a.risk_reasons = ra.result.reasons + [f"qayda: {x}" for x in ra.rule_notes]
         a.risk_status = ra.status

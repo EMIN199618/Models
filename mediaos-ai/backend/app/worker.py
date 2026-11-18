@@ -28,8 +28,16 @@ def collectors():
     return out
 
 
+_last_social = 0.0
+
+
 def tick() -> dict:
+    global _last_social
     results = {c.name: run_collector(c) for c in collectors()}
+    from app.collectors import ensembledata as ED
+    if ED.get_token() and time.monotonic() - _last_social >= get_settings().ensembledata_interval_s:
+        results["ensembledata"] = run_collector(ED.SocialCollector())
+        _last_social = time.monotonic()
     return results
 
 

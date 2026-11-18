@@ -32,6 +32,7 @@ from app.pipeline.process import RawNews, process_batch
 from app.rag.ingest import ingest_documents
 from app.rag.retriever import PgVectorRetriever, rerank
 from app.security.auth import current_user, rate_limited, require_role
+from app.api.integrations import router as integrations_router
 
 log = logging.getLogger(__name__)
 
@@ -45,6 +46,7 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title="MEDIA OS AI", version="2.0.0", description="DGK media monitorinqi və AI Analyst API",
               lifespan=lifespan)
 FRONTEND = Path(__file__).resolve().parents[3] / "frontend"
+app.include_router(integrations_router)
 _lat: dict[str, deque[float]] = defaultdict(lambda: deque(maxlen=2000))
 
 
@@ -103,6 +105,7 @@ def _dashboard_stats(days: int) -> dict[str, Any]:
             "by_category": grp(NewsAnalysis.category),
             "by_risk": grp(NewsAnalysis.risk_level),
             "by_location": grp(NewsAnalysis.location),
+            "by_platform": grp(func.coalesce(NewsItem.platform, "web")),
             "daily": [{"day": d, "total": t, "negative": int(n or 0)} for d, t, n in daily],
             "pending_review": db.scalar(select(func.count()).select_from(ReviewItem).where(ReviewItem.status == "pending")) or 0,
             "filtered_irrelevant": db.scalar(select(func.count()).select_from(NewsItem).where(
@@ -130,7 +133,18 @@ def _latest(limit: int, content_type: str | None) -> list[dict[str, Any]]:
                  "published_at": n.published_at.isoformat(), "content_type": n.content_type,
                  "category": n.analysis.category, "sentiment": n.analysis.sentiment, "risk_level": n.analysis.risk_level,
                  "risk_status": n.analysis.risk_status, "location": n.analysis.location,
-                 "is_synthetic": n.is_synthetic} for n in rows]
+                 "is_synthetic": n.is_synthetic, "platform": n.platform, "engagement": n.engagement or {},
+                 "author": _author(n)} for n in rows]
+
+
+def _author(n: NewsItem) -> str | None:
+    """Rəsmi və media hesabları açıq; fərdi istifadəçilərin adı maskalanır (ed_mask_user_handles)."""
+    h = n.author_handle
+    if not h:
+        return None
+    if n.content_type in ("official", "media") or not get_settings().ed_mask_user_handles:
+        return "@" + h
+    return "@" + h[:2] + "***"
 
 
 @app.get("/api/news/latest")

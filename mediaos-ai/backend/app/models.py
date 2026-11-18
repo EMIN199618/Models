@@ -61,6 +61,11 @@ class NewsItem(Base):
     content_type: Mapped[str] = mapped_column(String(16), index=True)
     dup_of_id: Mapped[int | None] = mapped_column(ForeignKey("news_items.id"))
     is_synthetic: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Sosial şəbəkə sahələri (EnsembleData): platforma, xarici id, müəllif, qarşılıqlı əlaqə göstəriciləri
+    platform: Mapped[str | None] = mapped_column(String(16), index=True)  # tiktok | instagram | web
+    external_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    author_handle: Mapped[str | None] = mapped_column(String(128))
+    engagement: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
 
     source: Mapped[Source] = relationship()
     analysis: Mapped["NewsAnalysis | None"] = relationship(back_populates="news", uselist=False)
@@ -245,3 +250,12 @@ class CollectorRun(Base):
     # Ən yeni elementin dərc vaxtı ilə toplanma vaxtı arasındakı gecikmə (san.)
     max_ingest_lag_s: Mapped[float | None] = mapped_column(Float)
     error: Mapped[str | None] = mapped_column(Text)
+
+
+class Setting(Base):
+    """İnteqrasiya parametrləri (məs. EnsembleData tokeni və hesab siyahıları). Token API-də heç vaxt geri qaytarılmır."""
+    __tablename__ = "settings"
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    updated_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

@@ -43,6 +43,7 @@ async function login() {
   const analyst = me.role !== "viewer";
   $("#reviewCard").hidden = !analyst;
   $("#metricsCard").hidden = !analyst;
+  $("#edCard").hidden = me.role !== "admin";
   refresh();
 }
 
@@ -50,6 +51,7 @@ function refresh() {
   loadStats();
   loadNews();
   if (me.role !== "viewer") { loadReview(); loadMetrics(); }
+  if (me.role === "admin") loadED();
 }
 
 function kpi(v, l) { return `<div class="kpi"><div class="v">${esc(v)}</div><div class="l">${esc(l)}</div></div>`; }
@@ -87,14 +89,70 @@ async function loadNews() {
   const items = await api(`/api/news/latest?limit=30${ct ? "&content_type=" + ct : ""}`);
   $("#news tbody").innerHTML = items.map((n) => `<tr>
     <td class="d">${esc(n.published_at.slice(0, 16).replace("T", " "))}</td>
-    <td>${esc(n.title)}${n.is_synthetic ? '<span class="synthetic">nümunə</span>' : ""}</td>
-    <td>${esc(n.source)}</td>
+    <td>${n.platform ? `<span class="plat ${esc(n.platform)}">${esc(n.platform)}</span>` : ""}${n.url && !n.is_synthetic ? `<a href="${esc(n.url)}" target="_blank" rel="noopener">${esc(n.title)}</a>` : esc(n.title)}${n.is_synthetic ? '<span class="synthetic">nümunə</span>' : ""}${engText(n.engagement)}</td>
+    <td>${esc(n.source)}${n.author ? `<span class="eng">${esc(n.author)}</span>` : ""}</td>
     <td class="ct-${esc(n.content_type)}">${esc(CT[n.content_type])}</td>
     <td>${esc(CAT[n.category] || n.category || "—")}</td>
     <td class="s-${esc(n.sentiment)}">${esc(SENT[n.sentiment] || "—")}</td>
     <td class="r-${esc(n.risk_level)}">${esc(RISK[n.risk_level] || "—")}${n.risk_status === "pending_review" ? " ⏳" : n.risk_status === "confirmed" ? " ✓" : ""}</td>
   </tr>`).join("") || '<tr><td colspan="7" class="muted">Xəbər yoxdur</td></tr>';
 }
+
+function fmtN(v) { return v >= 1e6 ? (v / 1e6).toFixed(1) + "M" : v >= 1e3 ? (v / 1e3).toFixed(1) + "K" : String(v); }
+function engText(e) {
+  if (!e) return "";
+  const parts = [["views", "baxış"], ["likes", "bəyənmə"], ["comments", "şərh"], ["shares", "paylaşım"]]
+    .filter(([k]) => e[k]).map(([k, l]) => `${fmtN(e[k])} ${l}`);
+  return parts.length ? `<span class="eng">${parts.join(" · ")}</span>` : "";
+}
+
+const list = (id) => $(id).value.split(",").map((x) => x.trim()).filter(Boolean);
+async function loadED() {
+  const s = await api("/api/integrations/ensembledata");
+  $("#edStatus").textContent = s.configured ? `token: ${s.token} (${s.token_source === "admin_panel" ? "admin panel" : "mühit dəyişəni"})${s.running ? " · toplama gedir…" : ""}` : "token daxil edilməyib";
+  const c = s.config;
+  $("#edKw").value = c.tiktok_keywords.join(", "); $("#edTags").value = c.tiktok_hashtags.join(", ");
+  $("#edIgOff").value = c.instagram_official_accounts.join(", "); $("#edIgMedia").value = c.instagram_media_accounts.join(", ");
+  $("#edTtOff").value = c.tiktok_official_accounts.join(", ");
+  $("#edUnits").placeholder = `unit limiti (indiki: ${c.max_units_per_run})`;
+  const r = s.last_result;
+  if (r) {
+    $("#edResult").innerHTML = r.error ? `<span class="s-negative">${esc(r.error)}</span>` :
+      `Son toplama: ${r.collector.new ?? 0} yeni element, ${r.relevant} DGK-ya aid, ${r.irrelevant} əlaqəsiz, ${r.risk_pending} risk yoxlamaya, ${r.collector.units_spent} unit xərcləndi` +
+      (r.collector_errors && r.collector_errors.length ? `<br><span class="r-medium">${esc(r.collector_errors.join("; "))}</span>` : "");
+  } else if (s.runs[0]) {
+    const x = s.runs[0];
+    $("#edResult").textContent = `Son toplama ${x.started_at.slice(0, 16).replace("T", " ")}: ${x.inserted} əlavə, ${x.irrelevant} əlaqəsiz${x.error ? " · " + x.error : ""}`;
+  }
+  if (s.running) setTimeout(() => loadED().then(refresh), 4000);
+}
+$("#edTokenForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const t = $("#edToken").value.trim(); if (!t) return;
+  $("#edResult").textContent = "Token yoxlanılır…";
+  try { const r = await api("/api/integrations/ensembledata/token", { method: "PUT", body: JSON.stringify({ token: t }) });
+    $("#edToken").value = ""; $("#edResult").textContent = `Token saxlanıldı (${r.token}). Bu gün istifadə olunan unit: ${JSON.stringify(r.used_units_today)}`; loadED();
+  } catch (err) { $("#edResult").innerHTML = `<span class="s-negative">${esc(err.message)}</span>`; }
+});
+$("#edSave").addEventListener("click", async () => {
+  try { await api("/api/integrations/ensembledata/config", { method: "PUT", body: JSON.stringify({
+      tiktok_keywords: list("#edKw"), tiktok_hashtags: list("#edTags"), instagram_official_accounts: list("#edIgOff"),
+      instagram_media_accounts: list("#edIgMedia"), tiktok_official_accounts: list("#edTtOff") }) });
+    $("#edResult").textContent = "Parametrlər saxlanıldı."; loadED();
+  } catch (err) { $("#edResult").innerHTML = `<span class="s-negative">${esc(err.message)}</span>`; }
+});
+$("#edRun").addEventListener("click", async () => {
+  const u = Number($("#edUnits").value) || null;
+  try { await api("/api/integrations/ensembledata/run", { method: "POST", body: JSON.stringify({ max_units: u }) });
+    $("#edResult").textContent = "Toplama başladı…"; setTimeout(loadED, 1500);
+  } catch (err) { $("#edResult").innerHTML = `<span class="s-negative">${esc(err.message)}</span>`; }
+});
+$("#edDiscoverForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try { const users = await api("/api/integrations/ensembledata/discover", { method: "POST", body: JSON.stringify({ query: $("#edDiscover").value }) });
+    $("#edFound").innerHTML = users.map((u) => `<div>@${esc(u.username)} — ${esc(u.full_name || "")}${u.is_verified ? " ✓" : ""}</div>`).join("") || "Tapılmadı";
+  } catch (err) { $("#edFound").innerHTML = `<span class="s-negative">${esc(err.message)}</span>`; }
+});
 
 async function loadReview() {
   const items = await api("/api/review?status=pending");

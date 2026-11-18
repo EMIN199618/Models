@@ -129,7 +129,7 @@ def risk_chain(with_evidence: bool = True) -> Runnable:
     llm = structured_step(P.RISK, "risk", on_fail={"risk_level": "low", "score": 0.0, "requires_human_review": True,
                                                    "reasons": ["model cavabı alınmadı"]})
     prep = RunnableLambda(lambda x: {**x, "title": sanitize_source(x["title"], 500), "body": sanitize_source(x["body"]),
-                                     "mentions": x.get("mentions", 1)}, name="prepare_risk")
+                                     "mentions": x.get("mentions", 1), "reach": x.get("reach", "—")}, name="prepare_risk")
     ev = RunnablePassthrough.assign(**{"_ev": RunnableLambda(_evidence, name="retrieve_official_evidence")}) if with_evidence \
         else RunnablePassthrough.assign(_ev=RunnableLambda(lambda _: {"evidence": "", "_evidence_refs": {}}))
     flatten = RunnableLambda(lambda x: {**{k: v for k, v in x.items() if k != "_ev"}, **x["_ev"]}, name="flatten_evidence")

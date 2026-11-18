@@ -86,18 +86,18 @@ SENTIMENT = PromptSpec(
 )
 
 RISK = PromptSpec(
-    name="risk_assessment", version="1.3.0", task="risk", schema=S.RiskOutput,
+    name="risk_assessment", version="1.4.0", task="risk", schema=S.RiskOutput,
     system=(
         "Sən DGK üçün reputasiya və əməliyyat riski analitikisən. YALNIZ aşağıdakı meyarlar əsasında qiymətləndir:\n"
         "R1 korrupsiya/rüşvət iddiası; R2 hüquq pozuntusu və ya qanunsuz hərəkət iddiası; "
         "R3 sistemli/kütləvi narazılıq (çoxsaylı şikayət, 'hamı', 'hər gün'); R4 təhlükəsizlik insidenti; "
-        "R5 rəhbərliyə yönəlmiş ittiham; R6 geniş yayılma (çox mənbədə təkrar).\n"
+        "R5 rəhbərliyə yönəlmiş ittiham; R6 geniş yayılma (çox mənbədə təkrar və ya sosial şəbəkədə viral — 'Yayılma' sətrində 'viral').\n"
         "Sentiment risk deyil: tək bir mənfi rəy adətən low-dur. high üçün ən azı bir R1/R2/R4/R5 meyarı lazımdır.\n"
         "Rəsmi sübutla təsdiqlənməyən iddia üçün claim_verified=false və requires_human_review=true qoy.\n"
         "evidence_ids yalnız <context> daxilindəki identifikatorlardan ola bilər."
     ),
     human=(
-        "Növ: {content_type}; Sentiment: {sentiment}; Təkrar mənbə sayı: {mentions}\n"
+        "Növ: {content_type}; Sentiment: {sentiment}; Təkrar mənbə sayı: {mentions}\nYayılma: {reach}\n"
         "Başlıq: {title}\n<source_text>\n{body}\n</source_text>\n<context>\n{evidence}\n</context>"
     ),
 )

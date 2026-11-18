@@ -64,6 +64,32 @@ class Settings(BaseSettings):
     collector_feeds: list[str] = Field(default_factory=list)
     collector_interval_s: int = 600
 
+    # --- EnsembleData (Instagram + TikTok) ---
+    # Token admin paneldən (DB-də saxlanılır) və ya bu dəyişənlə verilir. Heç vaxt loga yazılmır.
+    ensembledata_token: str = ""
+    ensembledata_base_url: str = "https://ensembledata.com/apis"
+    ensembledata_timeout_s: float = 40.0
+    # Bir toplama dövründə xərclənə biləcək maksimum unit (büdcə qoruyucusu)
+    ensembledata_max_units_per_run: int = 150
+    ensembledata_interval_s: int = 3600
+    ed_tiktok_keywords: list[str] = Field(default_factory=lambda: [
+        "Dövlət Gömrük Komitəsi", "DGK gömrük", "gömrük", "gomruk", "Astara gömrük", "Qırmızı körpü gömrük",
+    ])
+    ed_tiktok_hashtags: list[str] = Field(default_factory=lambda: ["gömrük", "gomruk", "dgk", "azerbaijancustoms"])
+    ed_tiktok_period_days: Literal["0", "1", "7", "30", "90", "180"] = "7"
+    ed_tiktok_country: str = ""
+    ed_tiktok_official_accounts: list[str] = Field(default_factory=list)
+    ed_tiktok_media_accounts: list[str] = Field(default_factory=list)
+    ed_instagram_official_accounts: list[str] = Field(default_factory=list)
+    ed_instagram_media_accounts: list[str] = Field(default_factory=list)
+    ed_instagram_posts_per_account: int = 10
+    ed_instagram_comment_posts: int = 3   # rəsmi hesabın neçə son postunun şərhləri toplansın
+    # Viral hədləri — aşıldıqda risk meyarı R6 (geniş yayılma) tətbiq olunur
+    ed_viral_views: int = 50_000
+    ed_viral_shares: int = 500
+    # Fərdi istifadəçilərin hesab adları dashboard-da maskalanır (rəsmi/media hesabları açıq göstərilir)
+    ed_mask_user_handles: bool = True
+
 
 @lru_cache
 def get_settings() -> Settings:

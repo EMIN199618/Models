@@ -74,6 +74,13 @@ def init_db() -> None:
             "CREATE TABLE IF NOT EXISTS schema_version (version int PRIMARY KEY, applied_at timestamptz DEFAULT now())"
         ))
         conn.execute(text("INSERT INTO schema_version(version) VALUES (1) ON CONFLICT DO NOTHING"))
+        # Miqrasiya 002 — sosial şəbəkə sahələri (mövcud bazalar üçün; yeni baza create_all ilə alır)
+        for col, typ in (("platform", "varchar(16)"), ("external_id", "varchar(64)"),
+                         ("author_handle", "varchar(128)"), ("engagement", "jsonb DEFAULT '{}'::jsonb")):
+            conn.execute(text(f"ALTER TABLE news_items ADD COLUMN IF NOT EXISTS {col} {typ}"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ux_news_platform_external "
+                          "ON news_items (platform, external_id) WHERE external_id IS NOT NULL"))
+        conn.execute(text("INSERT INTO schema_version(version) VALUES (2) ON CONFLICT DO NOTHING"))
 
 
 def drop_db() -> None:

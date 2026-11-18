@@ -88,7 +88,8 @@ class LocalAnalystModel(BaseChatModel):
             sent = re.search(r"Sentiment:\s*(\w+)", human)
             mentions = re.search(r"Təkrar mənbə sayı:\s*(\d+)", human)
             return H.risk(title, src, ctype, sent.group(1) if sent else "neutral",
-                          int(mentions.group(1)) if mentions else 1, _tag(human, "context"))
+                          int(mentions.group(1)) if mentions else 1, _tag(human, "context"),
+                          reach=_field(human, "Yayılma"))
         if task == "factcheck":
             return H.fact_check(_field(human, "İddia"), _tag(human, "context"))
         if task == "rag":

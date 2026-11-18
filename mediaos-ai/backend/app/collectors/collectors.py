@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from app.db import session_scope
-from app.models import CollectorRun
+from app.models import AuditLog, CollectorRun
 from app.pipeline.process import RawNews, process_batch
 
 log = logging.getLogger(__name__)
@@ -64,12 +64,22 @@ def run_collector(collector) -> dict:
         log.error("collector %s xətası: %s", collector.name, exc)
         with session_scope() as db:
             db.add(CollectorRun(**run, finished_at=datetime.now(timezone.utc), errors=1, error=str(exc)[:500]))
-        return {"error": str(exc)}
+            db.add(AuditLog(action=f"collector.{collector.name}.failed", detail={
+                "error": str(exc)[:500], "stats": getattr(collector, "stats", {})}))
+        return {"error": str(exc), "collector": getattr(collector, "stats", {})}
     with session_scope() as db:
         st = process_batch(db, items)
         newest = max((i.published_at for i in items), default=None)
         lag = (started - (newest if newest.tzinfo else newest.replace(tzinfo=timezone.utc))).total_seconds() if newest else None
+        cerr = list(getattr(collector, "errors", []))
         db.add(CollectorRun(**run, finished_at=datetime.now(timezone.utc), fetched=st.fetched,
                             inserted=st.relevant + st.review, duplicates=st.duplicates + st.near_duplicates,
-                            irrelevant=st.irrelevant, errors=len(st.errors), max_ingest_lag_s=lag))
-    return st.as_dict()
+                            irrelevant=st.irrelevant, errors=len(st.errors) + len(cerr), max_ingest_lag_s=lag,
+                            error="; ".join(cerr)[:500] or None))
+        out = {**st.as_dict(), "collector": getattr(collector, "stats", {}), "collector_errors": cerr}
+        db.add(AuditLog(action=f"collector.{collector.name}.run", detail=json_safe(out)))
+    return out
+
+
+def json_safe(d: dict) -> dict:
+    return json.loads(json.dumps(d, default=str))

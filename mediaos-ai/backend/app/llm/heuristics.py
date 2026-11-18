@@ -25,13 +25,16 @@ STRONG_DGK = [
     r"dövlət gömrük komitə", r"\bdgk\b", r"gömrük komitəsi", r"azərbaycan(ın)? gömrük",
     r"gömrük (post|idarə|keçid|orqan|əməkdaş|xidmət|rüsum|bəyannamə|ərazi|nəzarət|məntəqə|terminal|yoxlama|rəsmiləşdir)",
     r"e-gömrük", r"sərhəd-keçid", r"gömrükçü",
+    # rus dilində
+    r"таможенн\w* комитет", r"\bгтк\b", r"таможн\w* азербайджан", r"азербайджанск\w* таможн",
 ]
-MEDIUM_DGK = [r"gömrü[kyğ]", r"qaçaqmal", r"bəyannamə", r"rüsum", r"aksiz", r"tranzit yük"]
+MEDIUM_DGK = [r"gömrü[kyğ]", r"qaçaqmal", r"bəyannamə", r"rüsum", r"aksiz", r"tranzit yük",
+              r"таможн", r"контрабанд", r"растаможк"]
 FOREIGN_CUSTOMS = re.compile(
     r"(gürcüstan|rusiya|türkiyə|iran|qazaxıstan|özbəkistan|avropa|abş|çin|ukrayna|almaniya|fransa)"
     r"\w*\s+(\w+\s+)?(gömrü|federal gömrük|gəlirlər)"
 )
-AZ_CONTEXT = re.compile(r"azərbaycan|dgk|dövlət gömrük komitə|" + "|".join(AZ_LOCATIONS))
+AZ_CONTEXT = re.compile(r"azərbaycan|azerbaycan|dgk|dövlət gömrük komitə|азербайджан|гтк|" + "|".join(AZ_LOCATIONS))
 NOISE = [r"gömrük ittifaqı", r"futbol", r"hava proqnozu", r"konsert", r"serial"]
 
 CATEGORY_KW: dict[str, list[str]] = {
@@ -68,18 +71,30 @@ RISK_CRITERIA: dict[str, tuple[str, list[str]]] = {
 DENIAL = ["təkzib", "həqiqətə uyğun deyil", "əsassızdır", "yalan", "reallığı əks etdirmir", "doğru deyil"]
 
 # ------------------------------------------------------------------ köməkçilər
+_FOLD = str.maketrans({"ə": "e", "ö": "o", "ü": "u", "ğ": "g", "ı": "i", "ş": "s", "ç": "c"})
+
+
+def fold(text: str) -> str:
+    """Sosial şəbəkədə tez-tez xüsusi hərfsiz yazılır ("gomruk", "qacaqmalciliq"). Hər iki yazılış tutulur.
+    Türk dilindəki "gümrük" → "gumruk" olur və "gomruk"-a uyğun gəlmir (Türkiyə gömrüyü səhvən tutulmur)."""
+    return text.translate(_FOLD)
+
+
 def _count(text: str, pats: list[str]) -> int:
-    return sum(1 for p in pats if re.search(p, text))
+    ft = fold(text)
+    return sum(1 for p in pats if re.search(p, text) or re.search(fold(p), ft))
 
 
 def _hits(text: str, words: list[str]) -> list[str]:
-    return [w for w in words if w in text]
+    ft = fold(text)
+    return [w for w in words if w in text or fold(w) in ft]
 
 
 def find_location(text: str) -> str | None:
     t = normalize_az(text)
+    ft = fold(t)
     for k, v in AZ_LOCATIONS.items():
-        if k in t:
+        if k in t or fold(k) in ft:
             return v
     return None
 
@@ -91,9 +106,9 @@ def relevance(title: str, body: str, source_kind: str) -> dict[str, Any]:
     score = min(1.0, 0.45 * strong + 0.18 * medium)
     loc = find_location(t)
     if loc and medium:
-        score += 0.2
+        score += 0.45  # Azərbaycan gömrük postunun adı + gömrük sözü = güclü siqnalla eyni çəki ("Astara gömrüyü")
     reasons = []
-    if FOREIGN_CUSTOMS.search(t) and not AZ_CONTEXT.search(t):
+    if (FOREIGN_CUSTOMS.search(t) or FOREIGN_CUSTOMS.search(fold(t))) and not (AZ_CONTEXT.search(t) or AZ_CONTEXT.search(fold(t))):
         score -= 0.6
         reasons.append("xarici ölkənin gömrük orqanı haqqındadır")
     if _count(t, NOISE):
@@ -202,7 +217,8 @@ def fact_check(claim: str, evidence: str) -> dict[str, Any]:
             "explanation": f"[{best['id']}] qismən oxşardır, lakin birbaşa təsdiq yoxdur."}
 
 
-def risk(title: str, body: str, content_type: str, sentiment_label: str, mentions: int, evidence: str) -> dict[str, Any]:
+def risk(title: str, body: str, content_type: str, sentiment_label: str, mentions: int, evidence: str,
+         reach: str = "") -> dict[str, Any]:
     t = normalize_az(f"{title} {body}")
     criteria, reasons = [], []
     # DGK-nin uğurlu əməliyyatı (qaçaqmalçılığın qarşısının alınması) DGK üçün risk deyil
@@ -219,6 +235,9 @@ def risk(title: str, body: str, content_type: str, sentiment_label: str, mention
     if mentions >= 3:
         criteria.append("R6")
         reasons.append(f"R6 Geniş yayılma: {mentions} mənbə")
+    elif reach.startswith("viral"):
+        criteria.append("R6")
+        reasons.append(f"R6 Sosial şəbəkədə viral yayılma ({reach[6:].strip()[:80]})")
     fc = fact_check(f"{title}. {body[:400]}", evidence) if evidence.strip() else {"status": "unverified", "evidence_ids": []}
     verified = fc["status"] == "confirmed"
     if fc["status"] == "contradicted":
